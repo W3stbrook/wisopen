@@ -76,13 +76,50 @@ if (!app.requestSingleInstanceLock()) {
       callFormat: (req) => api.callFormat(req),
       getSettings: () => store.getSettings(),
       getSnippets: () => store.getCache().snippets,
-      getDictionary: () => store.getCache().dictionary.filter((t) => t.enabled).map((t) => t.term),
+      getDictionary: () =>
+        store
+          .getCache()
+          .dictionary.filter((t) => t.enabled)
+          .map((t) =>
+            t.sounds_like && t.sounds_like.length
+              ? `${t.term} (also heard as: ${t.sounds_like.join(', ')})`
+              : t.term,
+          ),
       overlay: (state, extra) => windows.overlayState(state, extra),
       engineCommand: (cmd) => windows.engineCommand(cmd),
       inject: (text, mode) => injectText(text, mode),
-      addHistory: (d) => void store.addHistory(d),
+      addHistory: (d) => {
+        store.addHistory(d);
+        // also persist server-side (RLS) for cross-device history
+        void api.insertDictation({
+          raw_transcript: d.raw,
+          final_text: d.final,
+          mode_id: store.getSettings().defaultModeId,
+          lang: d.lang,
+          audio_seconds: d.audioSeconds,
+        });
+      },
       supabaseUrl: cfg.supabaseUrl,
       sampleRate: cfg.sampleRate,
+    });
+
+    // populate the local cache (snippets/dictionary/modes) so the dictation loop has
+    // data before the user opens Settings, and refresh it whenever auth changes.
+    const refreshCache = async (): Promise<void> => {
+      try {
+        const [snippets, dictionary, modes] = await Promise.all([
+          api.listSnippets(),
+          api.listDictionary(),
+          api.listModes(),
+        ]);
+        store.setCache({ snippets, dictionary, modes });
+      } catch (e) {
+        console.warn('[cache] refresh failed', e);
+      }
+    };
+    api.onChange((s) => {
+      windows.send('auth:changed', s);
+      if (s.signedIn) void refreshCache();
     });
 
     registerIpc({ api, store, session, windows });
@@ -133,9 +170,10 @@ if (!app.requestSingleInstanceLock()) {
     });
     app.on('activate', () => windows.showSettings()); // macOS dock/relaunch recovery
 
-    // onboarding if not signed in
+    // onboarding if not signed in; otherwise warm the cache for the dictation loop
     const status = await api.status();
-    if (!status.signedIn) windows.showOnboarding();
+    if (status.signedIn) void refreshCache();
+    else windows.showOnboarding();
   });
 
   // tray app: keep running when all windows are closed

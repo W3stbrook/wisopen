@@ -109,13 +109,39 @@ async function renderModes(): Promise<void> {
       <button class="primary" id="save">Save</button>
     </div>
     <h2 style="margin-top:18px">Available modes</h2>
-    <div class="card"><table><tr><th>Name</th><th>Description</th></tr>
-      ${modes.map((m) => `<tr><td>${esc(m.name)}</td><td class="muted">${esc(m.description ?? '')}</td></tr>`).join('')}
-    </table></div>`;
+    <div class="card"><table><tr><th>Name</th><th>Description</th><th></th></tr>
+      ${modes
+        .map(
+          (m) => `<tr><td>${esc(m.name)}${m.is_system ? '' : ' <span class="pill-badge">custom</span>'}</td>
+            <td class="muted">${esc(m.description ?? '')}</td>
+            <td>${m.is_system ? '' : `<button class="danger delmode" data-id="${esc(m.id)}">Delete</button>`}</td></tr>`,
+        )
+        .join('')}
+    </table></div>
+    <h2 style="margin-top:18px">Add a custom mode</h2>
+    <div class="card stack">
+      <label class="field"><span>Name</span><input id="mname" placeholder="Tweet" /></label>
+      <label class="field"><span>Instruction (how to format)</span>
+        <textarea id="mprompt" rows="3" placeholder="Rewrite as a punchy tweet under 280 chars; keep the meaning."></textarea></label>
+      <button class="primary" id="addmode">Add mode</button>
+    </div>`;
   document.getElementById('save')?.addEventListener('click', async () => {
     const v = (document.getElementById('defmode') as HTMLSelectElement).value;
     await setSettings({ defaultModeId: v || null });
   });
+  document.getElementById('addmode')?.addEventListener('click', async () => {
+    const name = (document.getElementById('mname') as HTMLInputElement).value.trim();
+    const prompt_template = (document.getElementById('mprompt') as HTMLTextAreaElement).value.trim();
+    if (!name || !prompt_template) return;
+    await w.invoke('data:upsertMode', { name, prompt_template });
+    void select('Modes');
+  });
+  for (const b of main.querySelectorAll('.delmode')) {
+    b.addEventListener('click', async () => {
+      await w.invoke('data:deleteMode', (b as HTMLElement).dataset.id);
+      void select('Modes');
+    });
+  }
 }
 
 async function renderShortcuts(): Promise<void> {

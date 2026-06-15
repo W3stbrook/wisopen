@@ -76,6 +76,15 @@ export function registerIpc(ctx: IpcContext): void {
     store.setCache({ modes: m });
     return m;
   });
+  h('data:upsertMode', async (m) => {
+    const row = await api.upsertMode(m as never);
+    store.setCache({ modes: await api.listModes() });
+    return row;
+  });
+  h('data:deleteMode', async (id) => {
+    await api.deleteMode(id as string);
+    store.setCache({ modes: await api.listModes() });
+  });
   h('data:listHistory', (p) => store.getHistory((p as { limit: number }).limit));
 
   // permissions

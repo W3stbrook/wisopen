@@ -13,6 +13,7 @@ import {
   normalizeOpenAiChatUsage,
   normalizeOpenAiResponsesUsage,
   normalizeBedrockUsage,
+  estimateCost,
 } from '../supabase/functions/_shared/usage.ts';
 import { pcm16ToWav } from '../supabase/functions/_shared/util.ts';
 import type { SttEvent, SttSession } from '../supabase/functions/_shared/providers/types.ts';
@@ -148,6 +149,14 @@ describe('usage normalization (3 shapes)', () => {
   it('responses', () => expect(normalizeOpenAiResponsesUsage({ input_tokens: 5, output_tokens: 9 })).toEqual({ tokensIn: 5, tokensOut: 9 }));
   it('bedrock', () => expect(normalizeBedrockUsage({ inputTokens: 5, outputTokens: 9 })).toEqual({ tokensIn: 5, tokensOut: 9 }));
   it('undefined -> zeros', () => expect(normalizeOpenAiChatUsage(undefined)).toEqual({ tokensIn: 0, tokensOut: 0 }));
+});
+
+describe('estimateCost', () => {
+  it('prices LLM tokens and STT audio seconds; zero for mock/raw', () => {
+    expect(estimateCost({ user_id: 'u', kind: 'llm', provider: 'openai-compatible', model: 'm', tokens_in: 1000, tokens_out: 1000 })).toBeCloseTo(0.00075, 6);
+    expect(estimateCost({ user_id: 'u', kind: 'stt', provider: 'aws-transcribe', model: null, audio_seconds: 10 })).toBeCloseTo(0.004, 6);
+    expect(estimateCost({ user_id: 'u', kind: 'llm', provider: 'mock', model: 'm', tokens_in: 999, tokens_out: 999 })).toBe(0);
+  });
 });
 
 describe('pcm16ToWav', () => {

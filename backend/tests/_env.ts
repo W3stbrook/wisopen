@@ -2,8 +2,9 @@
 // local Supabase stack isn't running (keeps `npm test` green in CI without Docker).
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-export const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
-export const ANON = process.env.SUPABASE_ANON_KEY ?? '';
+// accept both the SUPABASE_* vocabulary and the desktop's WISOPEN_SUPABASE_* one
+export const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.WISOPEN_SUPABASE_URL ?? '';
+export const ANON = process.env.SUPABASE_ANON_KEY ?? process.env.WISOPEN_SUPABASE_ANON_KEY ?? '';
 export const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 export const FUNCTIONS_URL =
   process.env.FUNCTIONS_URL ?? (SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '');

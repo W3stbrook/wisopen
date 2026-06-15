@@ -34,8 +34,15 @@
     </div>
 
     <div class="card step" id="doneCard">
-      <h2>3 · You're set</h2>
-      <p class="muted">Default hotkey: <span class="pill-badge" id="hotkey">F13</span> (changeable in Settings). Hold it and talk.</p>
+      <h2>3 · Hotkey & mic test</h2>
+      <label class="field"><span>Push-to-talk key (e.g. F13, or Ctrl+Space — not Fn)</span>
+        <input id="hotkey" value="F13" /></label>
+      <div class="row">
+        <button id="saveHotkey">Save hotkey</button>
+        <button id="micTest">Try a sample dictation</button>
+        <span id="micMsg" class="muted"></span>
+      </div>
+      <p class="muted" style="margin-top:12px">Then just hold your hotkey anywhere and talk.</p>
       <button class="primary" id="finish">Open Wisopen</button>
     </div>
 

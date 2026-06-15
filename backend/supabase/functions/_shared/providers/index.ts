@@ -41,6 +41,8 @@ export async function getSttProvider(): Promise<SttProvider> {
       'npm:@aws-sdk/client-transcribe-streaming@3.1068.0'
     );
     const client = new TranscribeStreamingClient({ region: env('AWS_REGION') ?? 'us-east-1' });
+    // AWS Transcribe needs full locales (en-US), not bare codes (en) the UI sends.
+    const LOCALE: Record<string, string> = { en: 'en-US', it: 'it-IT' };
     const start = (
       opts: { sampleRate: number; lang?: string | null },
       audio: AsyncIterable<Uint8Array>,
@@ -48,8 +50,12 @@ export async function getSttProvider(): Promise<SttProvider> {
       async function* audioStream() {
         for await (const chunk of audio) yield { AudioEvent: { AudioChunk: chunk } };
       }
+      const fallback = env('STT_LANGUAGE') ?? 'en-US';
+      const langIn = opts.lang ?? undefined;
+      const languageCode =
+        langIn && !langIn.includes('-') ? (LOCALE[langIn] ?? fallback) : (langIn ?? fallback);
       const cmd = new StartStreamTranscriptionCommand({
-        LanguageCode: opts.lang ?? 'en-US',
+        LanguageCode: languageCode,
         MediaSampleRateHertz: opts.sampleRate,
         MediaEncoding: 'pcm',
         AudioStream: audioStream(),

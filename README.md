@@ -79,8 +79,9 @@ npm test                       # unit tests (snippet, providers, session, secret
 npm run typecheck              # all workspaces
 
 # integration + e2e need the local stack running and keys exported:
-WISOPEN_SUPABASE_URL=… WISOPEN_SUPABASE_ANON_KEY=… SUPABASE_SERVICE_ROLE_KEY=… \
-  npm test                     # adds RLS + format + stt-stream live-stack tests
+# export keys from `cd backend && supabase status -o json` (API_URL/ANON_KEY/SERVICE_ROLE_KEY):
+SUPABASE_URL=… SUPABASE_ANON_KEY=… SUPABASE_SERVICE_ROLE_KEY=… \
+  npx vitest run backend/tests --no-file-parallelism   # RLS + format + stt-stream live-stack
 npm run e2e                    # launches the real app, signs up, runs the format loop
 ```
 

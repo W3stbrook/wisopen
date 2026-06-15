@@ -155,4 +155,35 @@ export class ApiClient {
       .order('name');
     return (data ?? []) as Mode[];
   }
+  async upsertMode(m: Partial<Mode> & { name: string; prompt_template: string }): Promise<Mode> {
+    const { userId } = await this.status();
+    const row = {
+      ...(m.id ? { id: m.id } : {}),
+      user_id: userId,
+      name: m.name,
+      description: m.description ?? null,
+      prompt_template: m.prompt_template,
+      is_system: false,
+    };
+    const { data, error } = await this.supabase.from('modes').upsert(row).select().single();
+    if (error) throw error;
+    return data as Mode;
+  }
+  async deleteMode(id: string): Promise<void> {
+    // RLS only permits deleting own non-system modes
+    await this.supabase.from('modes').delete().eq('id', id);
+  }
+
+  /** Persist a completed dictation server-side (RLS) for cross-device history. */
+  async insertDictation(d: {
+    raw_transcript: string;
+    final_text: string;
+    mode_id: string | null;
+    lang: string | null;
+    audio_seconds: number | null;
+  }): Promise<void> {
+    const { userId } = await this.status();
+    const { error } = await this.supabase.from('dictations').insert({ user_id: userId, ...d });
+    if (error) console.warn('[dictations] insert failed', error.message);
+  }
 }

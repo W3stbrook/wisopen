@@ -57,6 +57,21 @@ $('micBtn').addEventListener('click', async () => {
 });
 $('axBtn').addEventListener('click', () => w.invoke('perms:openSettingsPane', 'accessibility'));
 $('imBtn').addEventListener('click', () => w.invoke('perms:openSettingsPane', 'input-monitoring'));
+$('saveHotkey').addEventListener('click', async () => {
+  const pttKey = ($('hotkey') as HTMLInputElement).value.trim() || 'F13';
+  await w.invoke('settings:set', { pttKey });
+  toast('Hotkey saved');
+});
+
+$('micTest').addEventListener('click', async () => {
+  $('micMsg').textContent = 'Listening… speak now (auto-stops in 4s)';
+  await w.invoke('dictation:start');
+  setTimeout(async () => {
+    await w.invoke('dictation:stop');
+    $('micMsg').textContent = 'Done — watch the overlay for the result.';
+  }, 4000);
+});
+
 $('finish').addEventListener('click', () => window.close());
 
 // auth can change out-of-band (magic-link deep-link exchange in main) — reflect it
@@ -69,5 +84,5 @@ window.wisopen.on('auth:changed', (payload) => {
   await refreshAuth();
   await refreshPerms();
   const settings = await w.invoke<AppSettings>('settings:get');
-  $('hotkey').textContent = settings.pttKey;
+  ($('hotkey') as HTMLInputElement).value = settings.pttKey;
 })().catch(() => undefined);

@@ -101,8 +101,15 @@ export interface AppSettings {
   saveHistory: boolean;
 }
 
+/** Spec default: F13 on macOS, Ctrl+Space on Windows. Evaluated in the main process. */
+export function defaultPttKey(
+  platform: string = typeof process !== 'undefined' ? process.platform : 'darwin',
+): string {
+  return platform === 'win32' ? 'Ctrl+Space' : 'F13';
+}
+
 export const DEFAULT_SETTINGS: AppSettings = {
-  pttKey: 'F13',
+  pttKey: defaultPttKey(),
   pttMode: 'hold',
   defaultModeId: null,
   injectionMode: 'paste',

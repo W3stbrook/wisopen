@@ -37,6 +37,8 @@ export interface IpcInvoke {
   'data:upsertTerm': (t: Partial<DictionaryTerm> & { term: string }) => DictionaryTerm;
   'data:deleteTerm': (id: string) => void;
   'data:listModes': () => Mode[];
+  'data:upsertMode': (m: Partial<Mode> & { name: string; prompt_template: string }) => Mode;
+  'data:deleteMode': (id: string) => void;
   'data:listHistory': (p: { limit: number }) => HistoryItem[];
 
   'perms:status': () => { microphone: string; accessibility: boolean; inputMonitoring: boolean };

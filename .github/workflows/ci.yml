@@ -34,3 +34,41 @@ jobs:
       - name: Typecheck Deno edge functions
         working-directory: backend/supabase/functions
         run: deno check format/index.ts stt-stream/index.ts
+
+  integration:
+    # spins up the local Supabase stack and runs the live integration suite (mock providers)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - name: Start Supabase + apply migrations/seed
+        working-directory: backend
+        run: |
+          supabase start
+          supabase db reset
+      - name: Serve edge functions (mock providers)
+        working-directory: backend
+        run: |
+          cp supabase/functions/.env.example supabase/functions/.env
+          nohup supabase functions serve --no-verify-jwt --env-file supabase/functions/.env > /tmp/fns.log 2>&1 &
+          for i in $(seq 1 30); do
+            c=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://127.0.0.1:54321/functions/v1/format -d '{}' || true)
+            [ "$c" = "401" ] && break; sleep 4
+          done
+      - name: Run integration suite
+        run: |
+          STATUS=$(cd backend && supabase status -o json)
+          export SUPABASE_URL=$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).API_URL))' <<<"$STATUS")
+          export SUPABASE_ANON_KEY=$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).ANON_KEY))' <<<"$STATUS")
+          export SUPABASE_SERVICE_ROLE_KEY=$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).SERVICE_ROLE_KEY))' <<<"$STATUS")
+          export FUNCTIONS_URL="$SUPABASE_URL/functions/v1"
+          npx vitest run backend/tests --no-file-parallelism
