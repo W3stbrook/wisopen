@@ -22,9 +22,12 @@
     "build:win": "npm --workspace apps/desktop run build:win"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "^2.108.2",
     "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13",
     "typescript": "^5.6.3",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "ws": "^8.18.0"
   }
 }
