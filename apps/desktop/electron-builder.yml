@@ -57,4 +57,4 @@ publish:
   - provider: github
     owner: W3stbrook
     repo: wisopen
-    releaseType: release # publish releases live so installed apps auto-update
+    releaseType: draft # each platform job appends to ONE draft; a final CI job publishes it
