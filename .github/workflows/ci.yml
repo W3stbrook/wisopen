@@ -66,9 +66,11 @@ jobs:
           done
       - name: Run integration suite
         run: |
-          STATUS=$(cd backend && supabase status -o json)
-          export SUPABASE_URL=$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).API_URL))' <<<"$STATUS")
-          export SUPABASE_ANON_KEY=$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).ANON_KEY))' <<<"$STATUS")
-          export SUPABASE_SERVICE_ROLE_KEY=$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).SERVICE_ROLE_KEY))' <<<"$STATUS")
-          export FUNCTIONS_URL="$SUPABASE_URL/functions/v1"
+          # `-o env` is the stable shell-consumption format (ANON_KEY/API_URL/SERVICE_ROLE_KEY)
+          eval "$(cd backend && supabase status -o env)"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="$ANON_KEY"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          export FUNCTIONS_URL="$API_URL/functions/v1"
+          test -n "$SUPABASE_ANON_KEY" || { echo "::error::no ANON_KEY from supabase status"; exit 1; }
           npx vitest run backend/tests --no-file-parallelism
