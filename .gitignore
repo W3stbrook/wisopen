@@ -6,9 +6,10 @@ node_modules/
 # build output
 dist/
 out/
-build/
 release/
 *.tsbuildinfo
+# (note: do NOT ignore a generic build/ — apps/desktop/build holds committed
+#  electron-builder resources like entitlements.mac.plist)
 
 # electron-builder artifacts
 apps/desktop/dist/

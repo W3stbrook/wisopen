@@ -9,8 +9,8 @@
     "build": "electron-vite build",
     "rebuild": "electron-rebuild -f -m . -w uiohook-napi",
     "preview": "electron-vite preview",
-    "build:mac": "electron-vite build && electron-builder --mac",
-    "build:win": "electron-vite build && electron-builder --win",
+    "build:mac": "electron-vite build && electron-builder --mac --publish never",
+    "build:win": "electron-vite build && electron-builder --win --publish never",
     "test:e2e": "playwright test",
     "typecheck": "tsc -p tsconfig.json"
   },

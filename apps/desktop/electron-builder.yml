@@ -1,0 +1,56 @@
+appId: ai.wisopen.app
+productName: Wisopen
+copyright: Copyright © 2026 Wisopen
+# pinned because electron is hoisted in the npm workspace (range not auto-resolvable)
+electronVersion: 42.4.0
+directories:
+  output: release
+  buildResources: build
+
+# only the bundled output + manifest; node_modules native deps are added automatically
+files:
+  - out/**
+  - package.json
+
+# native addons must be unpacked from the asar so they can be dlopen'd at runtime
+asarUnpack:
+  - '**/*.node'
+  - '**/node_modules/uiohook-napi/**'
+  - '**/node_modules/@nut-tree-fork/**'
+
+# uiohook-napi + nut.js ship N-API prebuilt binaries (ABI-stable across Node/Electron),
+# so no source rebuild is needed — and skipping it avoids host node-gyp/Python issues.
+npmRebuild: false
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - dmg
+    - zip # required for Squirrel.Mac auto-update
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # Notarization runs automatically when APPLE_* env vars are present (see README).
+  extendInfo:
+    NSMicrophoneUsageDescription: Wisopen needs the microphone to transcribe your dictation.
+    CFBundleURLTypes:
+      - CFBundleURLName: ai.wisopen.app
+        CFBundleURLSchemes:
+          - wisopen
+    LSUIElement: true # menu-bar app (no Dock icon)
+
+win:
+  target:
+    - nsis
+  # Code-signing via signtool reads WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD env vars when set.
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+
+# auto-update feed (set provider/url for real releases)
+publish:
+  - provider: generic
+    url: https://example.com/wisopen/updates

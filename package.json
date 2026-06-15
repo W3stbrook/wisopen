@@ -18,6 +18,10 @@
     "test:e2e": "playwright test",
     "lint": "eslint . --ext .ts,.tsx --max-warnings 0 || true",
     "dev": "npm --workspace apps/desktop run dev",
+    "dev:local": "bash scripts/dev-local.sh",
+    "backend:start": "bash backend/scripts/start-local.sh",
+    "backend:serve": "bash backend/scripts/serve-functions.sh",
+    "e2e": "npm --workspace @wisopen/desktop run test:e2e",
     "build:mac": "npm --workspace apps/desktop run build:mac",
     "build:win": "npm --workspace apps/desktop run build:win"
   },
