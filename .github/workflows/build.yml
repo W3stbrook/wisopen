@@ -2,25 +2,23 @@ name: Build & release installers
 
 on:
   push:
-    tags: ['v*'] # tagging vX.Y.Z publishes a GitHub Release (apps auto-update from it)
+    tags: ['v*'] # tagging vX.Y.Z builds + publishes ONE GitHub Release (apps auto-update from it)
   workflow_dispatch: # manual run builds artifacts without publishing
 
 permissions:
-  contents: write # needed for electron-builder to create the GitHub Release
+  contents: write
 
 jobs:
+  # Build installers + update metadata (latest*.yml) on each platform, as artifacts.
   build:
     strategy:
       fail-fast: false
-      max-parallel: 1 # serialize so the two jobs don't race to create the same Release
       matrix:
         include:
           - os: macos-latest
-            release: release:mac
-            build: build:mac
+            script: build:mac
           - os: windows-latest
-            release: release:win
-            build: build:win
+            script: build:win
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -29,25 +27,20 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-
-      # On a tag: build, sign (only if cert secrets are present) and PUBLISH to the Release.
-      # Empty CSC_LINK must NOT be exported, or electron-builder tries to sign and fails.
-      - name: Release (publish to GitHub Releases)
-        if: github.ref_type == 'tag'
-        shell: bash # Windows runners default to PowerShell; this step is bash
+      - name: Build installers (signed only if cert secrets are present)
+        shell: bash # Windows runners default to PowerShell
         run: |
           if [ -n "$MAC_CSC_LINK" ]; then
             export CSC_LINK="$MAC_CSC_LINK" CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD" CSC_IDENTITY_AUTO_DISCOVERY=true
           else
-            export CSC_IDENTITY_AUTO_DISCOVERY=false   # clean unsigned mac build
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
           fi
           if [ -n "$WIN_CSC_LINK_S" ]; then
             export WIN_CSC_LINK="$WIN_CSC_LINK_S" WIN_CSC_KEY_PASSWORD="$WIN_CSC_KEY_PASSWORD_S"
           fi
-          npm --workspace @wisopen/desktop run ${{ matrix.release }}
+          npm --workspace @wisopen/desktop run ${{ matrix.script }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS signing+notarization — only active once these secrets are set
+          # macOS signing+notarization — active once these Apple secrets are set
           MAC_CSC_LINK: ${{ secrets.CSC_LINK }}
           MAC_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
@@ -57,35 +50,35 @@ jobs:
           # Windows code-signing (optional; auto-update works unsigned)
           WIN_CSC_LINK_S: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD_S: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-
-      # Manual run: build installers without publishing, upload as artifacts.
-      - name: Build (no publish)
-        if: github.ref_type != 'tag'
-        run: npm --workspace @wisopen/desktop run ${{ matrix.build }}
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      - name: Upload artifacts
-        if: github.ref_type != 'tag'
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: wisopen-${{ matrix.os }}
+          name: installers-${{ matrix.os }}
           path: |
             apps/desktop/release/*.dmg
             apps/desktop/release/*.zip
             apps/desktop/release/*.exe
             apps/desktop/release/*.blockmap
-          if-no-files-found: warn
+            apps/desktop/release/latest*.yml
+          if-no-files-found: error
 
-  # both platform jobs uploaded to ONE draft release; flip it live so apps auto-update
-  publish:
+  # On a tag: gather all platforms' artifacts and publish exactly ONE Release.
+  release:
     needs: build
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - name: Publish the draft release
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit ${{ github.ref_name }} --draft=false --latest
+        run: |
+          gh release create "${{ github.ref_name }}" dist/* \
+            --repo W3stbrook/wisopen \
+            --title "${{ github.ref_name }}" \
+            --notes "Automated release ${{ github.ref_name }}. Auto-update enabled (Windows now; macOS once code-signing secrets are configured)." \
+            --latest
