@@ -1,5 +1,6 @@
 // Wires the IPC contract (packages/shared ipc.ts) to the main-process modules.
 import { ipcMain } from 'electron';
+import type { IpcInvoke, IpcInvokeChannel } from '@wisopen/shared';
 import type { ApiClient } from './auth.js';
 import type { Store } from './store.js';
 import type { Session } from './session.js';
@@ -16,8 +17,11 @@ export interface IpcContext {
 
 export function registerIpc(ctx: IpcContext): void {
   const { api, store, session, windows } = ctx;
-  const h = (channel: string, fn: (...args: unknown[]) => unknown): void => {
-    ipcMain.handle(channel, (_e, ...args) => fn(...args));
+  const h = <C extends IpcInvokeChannel>(
+    channel: C,
+    fn: (...args: Parameters<IpcInvoke[C]>) => ReturnType<IpcInvoke[C]> | Promise<Awaited<ReturnType<IpcInvoke[C]>>>,
+  ): void => {
+    ipcMain.handle(channel, (_e, ...args) => (fn as (...a: unknown[]) => unknown)(...(args as unknown[])));
   };
 
   // auth
@@ -36,7 +40,7 @@ export function registerIpc(ctx: IpcContext): void {
 
   // settings
   h('settings:get', () => store.getSettings());
-  h('settings:set', (patch) => store.setSettings(patch as Record<string, unknown>));
+  h('settings:set', (patch) => store.setSettings(patch));
 
   // data CRUD (RLS) + refresh local cache for fast snippet expansion
   h('data:listSnippets', async () => {
@@ -89,5 +93,5 @@ export function registerIpc(ctx: IpcContext): void {
   ipcMain.on('engine:partial', (_e, p: { text: string }) => session.onPartial(p.text));
   ipcMain.on('engine:final', (_e, p: { text: string; audioSeconds: number }) => void session.onFinal(p));
   ipcMain.on('engine:error', (_e, p: { message: string }) => session.onError(p.message));
-  ipcMain.on('engine:level', (_e, p: { level: number }) => windows.overlayState('listening', { level: p.level }));
+  ipcMain.on('engine:level', (_e, p: { level: number }) => windows.overlayLevel(p.level));
 }

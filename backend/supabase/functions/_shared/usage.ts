@@ -39,7 +39,7 @@ export interface UsageRow {
 
 /** Insert a usage_events row. `insert` is injected (a supabase admin client method) for testability. */
 export async function logUsage(
-  insert: (table: string, row: Record<string, unknown>) => Promise<{ error: unknown }>,
+  insert: (table: string, row: Record<string, unknown>) => PromiseLike<{ error: unknown }>,
   row: UsageRow,
 ): Promise<void> {
   const { error } = await insert('usage_events', { ...row });

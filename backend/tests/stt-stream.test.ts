@@ -39,8 +39,15 @@ describe.runIf(liveStack)('stt-stream edge function (live stack, mock STT)', () 
     expect(msgs.some((m) => m.t === 'partial')).toBe(true);
     expect(final.text.length).toBeGreaterThan(0);
 
-    const usage = await u.client.from('usage_events').select('*').eq('kind', 'stt');
-    expect(usage.data?.length).toBeGreaterThanOrEqual(1);
+    // the server sends 'final' then awaits the usage insert, so poll briefly for the row
+    let usageCount = 0;
+    for (let i = 0; i < 12; i++) {
+      const usage = await u.client.from('usage_events').select('*').eq('kind', 'stt');
+      usageCount = usage.data?.length ?? 0;
+      if (usageCount >= 1) break;
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    expect(usageCount).toBeGreaterThanOrEqual(1);
   });
 
   it('closes the socket for an invalid jwt without a final', async () => {

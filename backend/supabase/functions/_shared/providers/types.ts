@@ -2,14 +2,26 @@
 // packages/shared/src/providers.ts; kept standalone because edge functions are
 // bundled in isolation and cannot import the workspace package).
 
-export interface SttEvent {
-  kind: 'partial' | 'final';
+// Mirror of packages/shared/src/providers.ts (kept standalone for the isolated Deno
+// bundle). Keep field-for-field in sync; CI `deno check` guards against drift.
+export interface SttPartial {
+  kind: 'partial';
+  text: string;
+}
+export interface SttFinal {
+  kind: 'final';
   text: string;
   audioSeconds?: number;
 }
+export interface SttErrorEvent {
+  kind: 'error';
+  message: string;
+}
+export type SttEvent = SttPartial | SttFinal | SttErrorEvent;
 
 export interface SttSession {
   pushAudio(frame: Uint8Array): void;
+  /** idempotent: may be called more than once (e.g. on 'end' and on socket close) */
   end(): void;
   events(): AsyncIterable<SttEvent>;
 }

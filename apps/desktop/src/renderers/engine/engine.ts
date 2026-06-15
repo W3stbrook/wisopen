@@ -7,9 +7,10 @@ let audioCtx: AudioContext | null = null;
 let stream: MediaStream | null = null;
 let processor: ScriptProcessorNode | null = null;
 let source: MediaStreamAudioSourceNode | null = null;
+let settled = false; // a final/error has resolved this run
 
-function wsUrl(supabaseUrl: string, jwt: string): string {
-  return `${supabaseUrl.replace(/^http/, 'ws')}/functions/v1/stt-stream?jwt=${encodeURIComponent(jwt)}`;
+function wsUrl(supabaseUrl: string): string {
+  return `${supabaseUrl.replace(/^http/, 'ws')}/functions/v1/stt-stream`;
 }
 
 function cleanupAudio(): void {
@@ -32,11 +33,17 @@ function closeWs(): void {
   ws = null;
 }
 
-async function start(jwt: string, supabaseUrl: string): Promise<void> {
+function finish(): void {
   cleanupAudio();
   closeWs();
+}
 
-  ws = new WebSocket(wsUrl(supabaseUrl, jwt));
+async function start(jwt: string, supabaseUrl: string, lang: string | null, dictionary: string[]): Promise<void> {
+  finish();
+  settled = false;
+
+  // token via subprotocol (avoids leaking it into URLs/logs)
+  ws = new WebSocket(wsUrl(supabaseUrl), ['jwt-' + jwt]);
   ws.onmessage = (e: MessageEvent) => {
     let m: { t: string; text?: string; audioSeconds?: number; message?: string };
     try {
@@ -47,23 +54,41 @@ async function start(jwt: string, supabaseUrl: string): Promise<void> {
     if (m.t === 'partial') {
       window.wisopen.send('engine:partial', { text: m.text ?? '' });
     } else if (m.t === 'final') {
+      settled = true;
       window.wisopen.send('engine:final', { text: m.text ?? '', audioSeconds: m.audioSeconds ?? 0 });
-      cleanupAudio();
-      closeWs();
+      finish();
     } else if (m.t === 'error') {
+      settled = true;
       window.wisopen.send('engine:error', { message: m.message ?? 'stt error' });
-      cleanupAudio();
-      closeWs();
+      finish();
     }
   };
-  ws.onerror = () => window.wisopen.send('engine:error', { message: 'stt connection error' });
+  ws.onerror = () => {
+    if (!settled) {
+      settled = true;
+      window.wisopen.send('engine:error', { message: 'stt connection error' });
+    }
+    finish();
+  };
+  ws.onclose = () => {
+    if (!settled) {
+      settled = true;
+      window.wisopen.send('engine:error', { message: 'stt connection closed' });
+    }
+    cleanupAudio();
+  };
 
-  await new Promise<void>((resolve, reject) => {
-    if (!ws) return reject(new Error('no ws'));
-    ws.onopen = () => resolve();
-    setTimeout(() => reject(new Error('ws open timeout')), 8000);
-  });
-  ws.send(JSON.stringify({ t: 'config', sampleRate: 16000 }));
+  try {
+    await new Promise<void>((resolveOpen, reject) => {
+      if (!ws) return reject(new Error('no ws'));
+      ws.onopen = () => resolveOpen();
+      setTimeout(() => reject(new Error('ws open timeout')), 8000);
+    });
+  } catch (err) {
+    finish();
+    throw err;
+  }
+  ws.send(JSON.stringify({ t: 'config', sampleRate: 16000, lang, dictionary }));
 
   stream = await navigator.mediaDevices.getUserMedia({
     audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
@@ -87,16 +112,25 @@ async function start(jwt: string, supabaseUrl: string): Promise<void> {
 function stop(): void {
   if (processor) processor.onaudioprocess = null; // stop sending audio
   if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: 'end' }));
-  // server emits 'final' which triggers cleanup; mic tracks stop now to clear the indicator
+  // server emits 'final' which triggers cleanup; stop mic tracks now to clear the indicator
   stream?.getTracks().forEach((t) => t.stop());
 }
 
 window.wisopen.on('engine:command', (payload) => {
-  const p = payload as { cmd: 'start' | 'stop'; jwt: string; supabaseUrl: string };
+  const p = payload as {
+    cmd: 'start' | 'stop';
+    jwt: string;
+    supabaseUrl: string;
+    lang: string | null;
+    dictionary: string[];
+  };
   if (p.cmd === 'start') {
-    start(p.jwt, p.supabaseUrl).catch((e) =>
-      window.wisopen.send('engine:error', { message: e instanceof Error ? e.message : String(e) }),
-    );
+    start(p.jwt, p.supabaseUrl, p.lang, p.dictionary).catch((e) => {
+      if (!settled) {
+        settled = true;
+        window.wisopen.send('engine:error', { message: e instanceof Error ? e.message : String(e) });
+      }
+    });
   } else {
     stop();
   }

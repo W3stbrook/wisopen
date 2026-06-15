@@ -10,17 +10,25 @@ function load(win: BrowserWindow, name: string): void {
   else void win.loadFile(join(__dirname, `../renderer/${name}/index.html`));
 }
 
+/** Deny new-window and external navigation on a window (defense-in-depth, sandbox:false). */
+function harden(win: BrowserWindow): void {
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.on('will-navigate', (e) => e.preventDefault());
+}
+
 export class Windows {
   engine: BrowserWindow | null = null;
   overlay: BrowserWindow | null = null;
   settings: BrowserWindow | null = null;
   onboarding: BrowserWindow | null = null;
+  private hideTimer: ReturnType<typeof setTimeout> | null = null;
 
   createEngine(): BrowserWindow {
     const win = new BrowserWindow({
       show: false,
       webPreferences: { preload, sandbox: false, contextIsolation: true },
     });
+    harden(win);
     load(win, 'engine');
     this.engine = win;
     return win;
@@ -45,6 +53,7 @@ export class Windows {
     win.setAlwaysOnTop(true, 'screen-saver');
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     win.setIgnoreMouseEvents(true, { forward: true });
+    harden(win);
     load(win, 'overlay');
     this.overlay = win;
     return win;
@@ -61,8 +70,13 @@ export class Windows {
     this.overlay.setPosition(Math.round(x + (width - w) / 2), Math.round(y + height - h - 80));
   }
 
-  overlayState(state: OverlayState, extra?: { partial?: string; message?: string; level?: number }): void {
+  overlayState(state: OverlayState, extra?: { partial?: string; message?: string }): void {
     if (!this.overlay) return;
+    // any new transition cancels a pending auto-hide so it can't hide a fresh overlay
+    if (this.hideTimer) {
+      clearTimeout(this.hideTimer);
+      this.hideTimer = null;
+    }
     if (state === 'idle') {
       this.overlay.hide();
       return;
@@ -71,7 +85,17 @@ export class Windows {
     if (!this.overlay.isVisible()) this.overlay.showInactive();
     this.overlay.webContents.send('overlay:state', { state, ...extra });
     if (state === 'done') {
-      setTimeout(() => this.overlay?.hide(), 900);
+      this.hideTimer = setTimeout(() => {
+        this.hideTimer = null;
+        this.overlay?.hide();
+      }, 900);
+    }
+  }
+
+  /** Mic-level meter update only — never touches overlay state or position (#10). */
+  overlayLevel(level: number): void {
+    if (this.overlay && this.overlay.isVisible()) {
+      this.overlay.webContents.send('overlay:level', { level });
     }
   }
 
@@ -97,6 +121,7 @@ export class Windows {
       title: 'Wisopen',
       webPreferences: { preload, sandbox: false, contextIsolation: true },
     });
+    harden(win);
     load(win, 'settings');
     this.settings = win;
   }
@@ -113,6 +138,7 @@ export class Windows {
       title: 'Welcome to Wisopen',
       webPreferences: { preload, sandbox: false, contextIsolation: true },
     });
+    harden(win);
     load(win, 'onboarding');
     this.onboarding = win;
   }

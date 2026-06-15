@@ -6,6 +6,8 @@ import {
   type Page,
 } from '@playwright/test';
 import { join } from 'node:path';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 
 const appDir = process.cwd(); // apps/desktop (workspace script cwd)
 const mainEntry = join(appDir, 'out', 'main', 'index.js');
@@ -32,8 +34,10 @@ test.describe('Wisopen desktop smoke', () => {
   });
 
   test('boots, signs up against the live stack, runs format+snippet loop', async () => {
+    // fresh userData each run so the app always boots signed-out (onboarding shows)
+    const userData = mkdtempSync(join(tmpdir(), 'wisopen-e2e-'));
     app = await electron.launch({
-      args: [mainEntry],
+      args: [mainEntry, `--user-data-dir=${userData}`],
       cwd: appDir,
       env: {
         ...process.env,

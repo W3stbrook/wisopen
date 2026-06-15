@@ -57,6 +57,16 @@ export interface Dictation {
   created_at: string;
 }
 
+/** Local (client-side) dictation history entry — lighter than the server `Dictation` row. */
+export interface HistoryItem {
+  id: string;
+  raw: string;
+  final: string;
+  lang: string | null;
+  audio_seconds: number;
+  created_at: number;
+}
+
 export type UsageKind = 'stt' | 'llm';
 export type ProviderId =
   | 'aws-transcribe'
@@ -64,7 +74,8 @@ export type ProviderId =
   | 'bedrock'
   | 'openai-compatible'
   | 'tensorix'
-  | 'mock';
+  | 'mock'
+  | 'raw'; // Raw mode = no LLM call (passthrough)
 
 export interface UsageEvent {
   id: string;

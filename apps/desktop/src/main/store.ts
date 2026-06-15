@@ -4,17 +4,8 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { dirname } from 'node:path';
-import type { AppSettings, Snippet, DictionaryTerm, Mode } from '@wisopen/shared';
+import type { AppSettings, Snippet, DictionaryTerm, Mode, HistoryItem } from '@wisopen/shared';
 import { DEFAULT_SETTINGS } from '@wisopen/shared';
-
-export interface HistoryItem {
-  id: string;
-  raw: string;
-  final: string;
-  lang: string | null;
-  audio_seconds: number;
-  created_at: number;
-}
 
 interface StoreData {
   settings: Partial<AppSettings>;

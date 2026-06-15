@@ -6,7 +6,6 @@ import type { ProviderId } from './domain.js';
 export interface FormatRequest {
   transcript: string;
   mode_id: string | null;
-  app_context?: string | null;
   lang?: string | null;
   /** Dictionary terms passed inline so the function need not query (it can also query w/ caller RLS). */
   dictionary?: string[];
@@ -22,7 +21,8 @@ export interface FormatResponse {
 }
 
 // ---- stt-stream WebSocket protocol ----
-// Client connects to: ws://<host>/functions/v1/stt-stream?jwt=<access_token>
+// Client connects to ws://<host>/functions/v1/stt-stream and passes the Supabase
+// access token via the Sec-WebSocket-Protocol subprotocol: `jwt-<access_token>`.
 
 /** Sent by the client (Electron engine renderer) over the WS. */
 export type SttClientMsg =

@@ -59,6 +59,12 @@ $('axBtn').addEventListener('click', () => w.invoke('perms:openSettingsPane', 'a
 $('imBtn').addEventListener('click', () => w.invoke('perms:openSettingsPane', 'input-monitoring'));
 $('finish').addEventListener('click', () => window.close());
 
+// auth can change out-of-band (magic-link deep-link exchange in main) — reflect it
+window.wisopen.on('auth:changed', (payload) => {
+  const s = payload as AuthStatus;
+  $('authMsg').textContent = s.signedIn ? `Signed in as ${s.email ?? ''}` : '';
+});
+
 (async () => {
   await refreshAuth();
   await refreshPerms();

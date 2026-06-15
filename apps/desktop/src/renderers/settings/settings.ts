@@ -1,4 +1,4 @@
-import type { AppSettings, AuthStatus, Snippet, DictionaryTerm, Mode } from '@wisopen/shared';
+import type { AppSettings, AuthStatus, Snippet, DictionaryTerm, Mode, HistoryItem } from '@wisopen/shared';
 
 const w = window.wisopen;
 const main = document.getElementById('main') as HTMLElement;
@@ -11,7 +11,10 @@ function toast(msg: string): void {
   setTimeout(() => t.classList.remove('show'), 1800);
 }
 const esc = (s: string): string =>
-  s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
+  s.replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
+  );
 
 const TABS = ['Account', 'Hotkeys', 'Modes', 'Shortcuts', 'Dictionary', 'History', 'Language', 'Advanced'] as const;
 type Tab = (typeof TABS)[number];
@@ -124,8 +127,8 @@ async function renderShortcuts(): Promise<void> {
       <table id="tbl"><tr><th>Trigger</th><th>Expands to</th><th>Match</th><th></th></tr>
         ${snippets
           .map(
-            (s) => `<tr><td>${esc(s.trigger)}</td><td>${esc(s.expansion)}</td><td><span class="pill-badge">${s.match_mode}</span></td>
-              <td><button class="danger del" data-id="${s.id}">Delete</button></td></tr>`,
+            (s) => `<tr><td>${esc(s.trigger)}</td><td>${esc(s.expansion)}</td><td><span class="pill-badge">${esc(s.match_mode)}</span></td>
+              <td><button class="danger del" data-id="${esc(s.id)}">Delete</button></td></tr>`,
           )
           .join('')}
       </table>
@@ -159,7 +162,7 @@ async function renderDictionary(): Promise<void> {
     <p class="muted">Names/jargon the transcriber should spell correctly.</p>
     <div class="card">
       <table>${terms
-        .map((t) => `<tr><td>${esc(t.term)}</td><td><button class="danger del" data-id="${t.id}">Delete</button></td></tr>`)
+        .map((t) => `<tr><td>${esc(t.term)}</td><td><button class="danger del" data-id="${esc(t.id)}">Delete</button></td></tr>`)
         .join('')}</table>
       <div class="row" style="margin-top:10px">
         <input id="term" placeholder="Wisopen" /><button class="primary" id="add">Add</button>
@@ -180,7 +183,7 @@ async function renderDictionary(): Promise<void> {
 }
 
 async function renderHistory(): Promise<void> {
-  const items = await w.invoke<{ id: string; final: string; created_at: number }[]>('data:listHistory', { limit: 100 });
+  const items = await w.invoke<HistoryItem[]>('data:listHistory', { limit: 100 });
   main.innerHTML = `
     <h1>History</h1>
     <div class="card"><table><tr><th>When</th><th>Text</th></tr>

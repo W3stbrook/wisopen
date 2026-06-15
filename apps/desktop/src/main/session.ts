@@ -21,18 +21,34 @@ export interface SessionDeps {
   getSnippets: () => Snippet[];
   getDictionary: () => string[];
   overlay: (state: OverlayState, extra?: { partial?: string; message?: string }) => void;
-  engineCommand: (cmd: { cmd: 'start' | 'stop'; jwt: string; supabaseUrl: string; sampleRate: number }) => void;
+  engineCommand: (cmd: {
+    cmd: 'start' | 'stop';
+    jwt: string;
+    supabaseUrl: string;
+    sampleRate: number;
+    lang: string | null;
+    dictionary: string[];
+  }) => void;
   inject: (text: string, mode: 'paste' | 'keystroke') => Promise<string>;
   addHistory: (d: { raw: string; final: string; audioSeconds: number; lang: string | null }) => void;
-  onResult?: (final: string) => void;
   supabaseUrl: string;
   sampleRate: number;
+  /** ms before a stuck dictation (no final/error) self-resets. Default 25s. */
+  watchdogMs?: number;
 }
 
 export class Session {
   private busy = false;
   private snippetsSnapshot: Snippet[] = [];
+  private watchdog: ReturnType<typeof setTimeout> | null = null;
   constructor(private readonly deps: SessionDeps) {}
+
+  private clearWatchdog(): void {
+    if (this.watchdog) {
+      clearTimeout(this.watchdog);
+      this.watchdog = null;
+    }
+  }
 
   async start(): Promise<void> {
     if (this.busy) return;
@@ -42,6 +58,11 @@ export class Session {
       return;
     }
     this.busy = true;
+    this.clearWatchdog();
+    this.watchdog = setTimeout(
+      () => this.onError('Dictation timed out'),
+      this.deps.watchdogMs ?? 25_000,
+    );
     this.snippetsSnapshot = this.deps.getSnippets();
     this.deps.overlay('listening');
     this.deps.engineCommand({
@@ -49,12 +70,21 @@ export class Session {
       jwt,
       supabaseUrl: this.deps.supabaseUrl,
       sampleRate: this.deps.sampleRate,
+      lang: this.deps.getSettings().uiLanguage,
+      dictionary: this.deps.getDictionary(),
     });
   }
 
   stop(): void {
     if (!this.busy) return;
-    this.deps.engineCommand({ cmd: 'stop', jwt: '', supabaseUrl: this.deps.supabaseUrl, sampleRate: this.deps.sampleRate });
+    this.deps.engineCommand({
+      cmd: 'stop',
+      jwt: '',
+      supabaseUrl: this.deps.supabaseUrl,
+      sampleRate: this.deps.sampleRate,
+      lang: null,
+      dictionary: [],
+    });
   }
 
   onPartial(text: string): void {
@@ -85,16 +115,18 @@ export class Session {
           lang: settings.uiLanguage,
         });
       }
-      this.deps.onResult?.(expanded);
     } catch (e) {
       this.deps.overlay('error', { message: e instanceof Error ? e.message : String(e) });
     } finally {
+      this.clearWatchdog();
       this.busy = false;
     }
   }
 
   onError(message: string): void {
-    this.deps.overlay('error', { message });
+    if (!this.busy) return;
+    this.clearWatchdog();
     this.busy = false;
+    this.deps.overlay('error', { message });
   }
 }

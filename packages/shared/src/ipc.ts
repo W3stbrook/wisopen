@@ -1,7 +1,7 @@
 // Typed IPC contract between Electron main and renderers.
 // `invoke` channels are request/response; `event` channels are main -> renderer pushes.
 
-import type { AppSettings, Snippet, DictionaryTerm, Mode, Dictation } from './domain.js';
+import type { AppSettings, Snippet, DictionaryTerm, Mode, HistoryItem } from './domain.js';
 
 export type OverlayState =
   | 'idle'
@@ -22,6 +22,7 @@ export interface AuthStatus {
 export interface IpcInvoke {
   'auth:status': () => AuthStatus;
   'auth:signInPassword': (p: { email: string; password: string }) => AuthStatus;
+  'auth:signUpPassword': (p: { email: string; password: string }) => AuthStatus;
   'auth:signInOtp': (p: { email: string }) => { sent: boolean };
   'auth:signOut': () => void;
   'auth:getJwt': () => { jwt: string | null; supabaseUrl: string };
@@ -36,7 +37,7 @@ export interface IpcInvoke {
   'data:upsertTerm': (t: Partial<DictionaryTerm> & { term: string }) => DictionaryTerm;
   'data:deleteTerm': (id: string) => void;
   'data:listModes': () => Mode[];
-  'data:listHistory': (p: { limit: number }) => Dictation[];
+  'data:listHistory': (p: { limit: number }) => HistoryItem[];
 
   'perms:status': () => { microphone: string; accessibility: boolean; inputMonitoring: boolean };
   'perms:requestMicrophone': () => boolean;
@@ -44,21 +45,31 @@ export interface IpcInvoke {
 
   'dictation:start': () => void;
   'dictation:stop': () => void;
+}
 
-  // engine renderer -> main
-  'engine:partial': (p: { text: string }) => void;
-  'engine:final': (p: { text: string; audioSeconds: number }) => void;
-  'engine:level': (p: { level: number }) => void;
-  'engine:error': (p: { message: string }) => void;
+/** renderer -> main, fire-and-forget (ipcRenderer.send / ipcMain.on) */
+export interface IpcSend {
+  'engine:partial': { text: string };
+  'engine:final': { text: string; audioSeconds: number };
+  'engine:level': { level: number };
+  'engine:error': { message: string };
 }
 
 /** main -> renderer pushes (ipcRenderer.on) */
 export interface IpcEvents {
-  'overlay:state': { state: OverlayState; partial?: string; level?: number; message?: string };
+  'overlay:state': { state: OverlayState; partial?: string; message?: string };
+  'overlay:level': { level: number };
   'auth:changed': AuthStatus;
-  'engine:command': { cmd: 'start' | 'stop'; jwt: string; supabaseUrl: string; sampleRate: number };
-  'dictation:result': { final: string };
+  'engine:command': {
+    cmd: 'start' | 'stop';
+    jwt: string;
+    supabaseUrl: string;
+    sampleRate: number;
+    lang: string | null;
+    dictionary: string[];
+  };
 }
 
 export type IpcInvokeChannel = keyof IpcInvoke;
+export type IpcSendChannel = keyof IpcSend;
 export type IpcEventChannel = keyof IpcEvents;

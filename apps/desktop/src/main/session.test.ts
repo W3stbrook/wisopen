@@ -23,6 +23,7 @@ function makeDeps(over: Partial<SessionDeps> = {}): { deps: SessionDeps; log: st
     addHistory: () => log.push('history'),
     supabaseUrl: 'http://localhost',
     sampleRate: 16000,
+    watchdogMs: 1000,
     ...over,
   };
   return { deps, log, injected };
@@ -66,6 +67,18 @@ describe('Session orchestration', () => {
     await s.start();
     await s.onFinal({ text: 'x', audioSeconds: 1 });
     expect(log).toContain('overlay:error');
+  });
+
+  it('onError clears busy so a later dictation can start (engine-close recovery)', async () => {
+    const { deps, log } = makeDeps();
+    const s = new Session(deps);
+    await s.start();
+    s.onError('stt connection closed'); // engine closed without a final
+    expect(log).toContain('overlay:error');
+    log.length = 0;
+    await s.start(); // must not be stuck busy
+    expect(log).toContain('engine:start');
+    s.onError('cleanup'); // settle so no watchdog timer lingers past the test
   });
 
   it('does not save history when disabled', async () => {

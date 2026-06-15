@@ -76,8 +76,15 @@ export class HotkeyManager {
   };
 
   private handleUp = (e: UiEvent): void => {
-    if (!this.combo || this.mode === 'toggle') return;
-    if (this.active && e.keycode === this.combo.keycode) {
+    if (!this.combo || this.mode === 'toggle' || !this.active) return;
+    const c = this.combo;
+    const released =
+      e.keycode === c.keycode ||
+      (c.ctrl && !e.ctrlKey) ||
+      (c.meta && !e.metaKey) ||
+      (c.alt && !e.altKey) ||
+      (c.shift && !e.shiftKey);
+    if (released) {
       this.active = false;
       this.onStop();
     }

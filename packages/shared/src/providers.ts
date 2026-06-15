@@ -10,15 +10,19 @@ export interface SttFinal {
   text: string;
   audioSeconds: number;
 }
-export type SttEvent = SttPartial | SttFinal;
+export interface SttErrorEvent {
+  kind: 'error';
+  message: string;
+}
+export type SttEvent = SttPartial | SttFinal | SttErrorEvent;
 
 /** A live transcription session. Audio frames pushed in; events come out. */
 export interface SttSession {
   /** push a PCM16 mono little-endian frame */
   pushAudio(frame: Uint8Array): void;
-  /** signal end of utterance; resolves when the final event has been emitted */
-  end(): Promise<void>;
-  /** async iterator of partial/final events */
+  /** signal end of utterance (idempotent); the final/error event arrives via events() */
+  end(): void;
+  /** async iterator of partial/final/error events */
   events(): AsyncIterable<SttEvent>;
 }
 

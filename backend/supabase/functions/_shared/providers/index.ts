@@ -53,7 +53,8 @@ export async function getSttProvider(): Promise<SttProvider> {
         MediaSampleRateHertz: opts.sampleRate,
         MediaEncoding: 'pcm',
         AudioStream: audioStream(),
-      });
+        // deno-lint-ignore no-explicit-any
+      } as unknown as ConstructorParameters<typeof StartStreamTranscriptionCommand>[0]);
       return (async function* () {
         const resp = await client.send(cmd);
         // deno-lint-ignore no-explicit-any

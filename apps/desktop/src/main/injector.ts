@@ -30,14 +30,15 @@ export async function injectText(
     const mod = process.platform === 'darwin' ? Key.LeftCmd : Key.LeftControl;
     await keyboard.pressKey(mod, Key.V);
     await keyboard.releaseKey(mod, Key.V);
-    // restore the user's clipboard shortly after the paste lands
+    // restore the user's clipboard after the paste lands — but only if it still holds
+    // OUR text, so we never clobber something the user/another app copied meanwhile.
     setTimeout(() => {
       try {
-        clipboard.writeText(prev);
+        if (clipboard.readText() === text) clipboard.writeText(prev);
       } catch {
         /* ignore */
       }
-    }, 400);
+    }, 700);
     return 'pasted';
   } catch {
     // leave the dictated text on the clipboard so the user can paste manually

@@ -23,18 +23,26 @@ export interface TestUser {
   email: string;
 }
 
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
 export async function makeUser(): Promise<TestUser> {
   const email = `t_${Date.now()}_${Math.floor(Math.random() * 1e6)}@wisopen.test`;
   const password = 'password123!';
   const admin = adminClient();
-  const { data, error } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-  });
-  if (error) throw error;
-  const client = createClient(SUPABASE_URL, ANON, { auth: { persistSession: false } });
-  const { data: s, error: e2 } = await client.auth.signInWithPassword({ email, password });
-  if (e2 || !s.session) throw e2 ?? new Error('no session');
-  return { client, userId: data.user!.id, jwt: s.session.access_token, email };
+  // Local GoTrue can throw transient AuthRetryableFetchError under load — retry a few times.
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+      if (error) throw error;
+      const client = createClient(SUPABASE_URL, ANON, { auth: { persistSession: false } });
+      const { data: s, error: e2 } = await client.auth.signInWithPassword({ email, password });
+      if (e2 || !s.session) throw e2 ?? new Error('no session');
+      return { client, userId: data.user!.id, jwt: s.session.access_token, email };
+    } catch (e) {
+      lastErr = e;
+      await sleep(400 * (attempt + 1));
+    }
+  }
+  throw lastErr;
 }

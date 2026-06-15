@@ -32,6 +32,7 @@ export class AwsTranscribeStt implements SttProvider {
     const out = createEventQueue<SttEvent>();
     let bytes = 0;
     const committed: string[] = [];
+    const finalizedIds = new Set<string>(); // dedup: AWS re-emits a ResultId until IsPartial:false
 
     (async () => {
       try {
@@ -46,6 +47,9 @@ export class AwsTranscribeStt implements SttProvider {
             if (r.IsPartial) {
               out.push({ kind: 'partial', text: [...committed, text].join(' ').trim() });
             } else if (text) {
+              const id = r.ResultId ?? `seg-${committed.length}`;
+              if (finalizedIds.has(id)) continue; // already committed this segment
+              finalizedIds.add(id);
               committed.push(text);
               out.push({ kind: 'partial', text: committed.join(' ').trim() });
             }

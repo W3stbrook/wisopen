@@ -1,5 +1,5 @@
 import { app, session as electronSession, Tray } from 'electron';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { expandSnippets, type Snippet } from '@wisopen/shared';
 import { getConfig } from './config.js';
 import { Store } from './store.js';
@@ -15,6 +15,10 @@ import { initUpdater } from './updater.js';
 
 let tray: Tray | null = null;
 let pendingDeepLink: string | null = null;
+// Single open-url sink: buffers before ready, handles after (no double registration).
+let deepLinkSink: (url: string) => void = (url) => {
+  pendingDeepLink = url;
+};
 
 function extractCode(url: string): string | null {
   try {
@@ -40,14 +44,17 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   if (process.defaultApp) {
-    app.setAsDefaultProtocolClient('wisopen', process.execPath, [join(process.cwd())]);
+    // dev: relaunch electron with the app entry script so the real app handles the link
+    if (process.argv.length >= 2) {
+      app.setAsDefaultProtocolClient('wisopen', process.execPath, [resolve(process.argv[1] ?? '')]);
+    }
   } else {
     app.setAsDefaultProtocolClient('wisopen');
   }
 
   app.on('open-url', (event, url) => {
     event.preventDefault();
-    pendingDeepLink = url;
+    deepLinkSink(url);
   });
 
   app.whenReady().then(async () => {
@@ -74,7 +81,6 @@ if (!app.requestSingleInstanceLock()) {
       engineCommand: (cmd) => windows.engineCommand(cmd),
       inject: (text, mode) => injectText(text, mode),
       addHistory: (d) => void store.addHistory(d),
-      onResult: (final) => windows.send('dictation:result', { final }),
       supabaseUrl: cfg.supabaseUrl,
       sampleRate: cfg.sampleRate,
     });
@@ -114,16 +120,18 @@ if (!app.requestSingleInstanceLock()) {
     tray = createTray(windows, session);
     initUpdater(cfg.updateFeedUrl);
 
-    // deep link captured before ready
+    // route all future deep links straight to the handler; flush any captured before ready
+    deepLinkSink = (url) => void handleDeepLink(api, windows, url);
     if (pendingDeepLink) {
-      void handleDeepLink(api, windows, pendingDeepLink);
+      deepLinkSink(pendingDeepLink);
       pendingDeepLink = null;
     }
     app.on('second-instance', (_e, argv) => {
       const url = argv.find((a) => a.startsWith('wisopen://'));
       if (url) void handleDeepLink(api, windows, url);
+      else windows.showSettings(); // relaunch with no link -> resurface the UI (Windows)
     });
-    app.on('open-url', (_e, url) => void handleDeepLink(api, windows, url));
+    app.on('activate', () => windows.showSettings()); // macOS dock/relaunch recovery
 
     // onboarding if not signed in
     const status = await api.status();

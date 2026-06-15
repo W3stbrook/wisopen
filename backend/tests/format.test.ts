@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { liveStack, makeUser, FUNCTIONS_URL, ANON } from './_env.ts';
 
-describe.runIf(liveStack)('format edge function (live stack, mock LLM)', () => {
-  it('polishes the transcript and logs an llm usage event', async () => {
+describe.runIf(liveStack)('format edge function (live stack)', () => {
+  it('polishes the transcript and logs an llm usage event (provider-agnostic)', async () => {
     const u = await makeUser();
     const res = await fetch(`${FUNCTIONS_URL}/format`, {
       method: 'POST',
@@ -15,11 +15,13 @@ describe.runIf(liveStack)('format edge function (live stack, mock LLM)', () => {
     });
     expect(res.status).toBe(200);
     const json = await res.json();
-    // mock LLM: strips filler, capitalizes, adds period
-    expect(json.final_text).toBe('Hello world.');
-    expect(json.provider).toBe('mock');
+    // works against mock OR a real provider: polished, non-empty, filler removed
+    expect(typeof json.final_text).toBe('string');
+    expect(json.final_text.length).toBeGreaterThan(0);
+    expect(json.final_text.toLowerCase()).not.toContain(' um ');
+    expect(typeof json.provider).toBe('string');
 
-    // usage_events row written
+    // a real LLM provider logs usage (Raw passthrough would not — default mode is 'Clean')
     const usage = await u.client.from('usage_events').select('*').eq('kind', 'llm');
     expect(usage.data?.length).toBeGreaterThanOrEqual(1);
   });
@@ -31,5 +33,15 @@ describe.runIf(liveStack)('format edge function (live stack, mock LLM)', () => {
       body: JSON.stringify({ transcript: 'hi', mode_id: null }),
     });
     expect(res.status).toBe(401);
+  });
+
+  it('returns 400 for an empty transcript', async () => {
+    const u = await makeUser();
+    const res = await fetch(`${FUNCTIONS_URL}/format`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${u.jwt}`, apikey: ANON, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transcript: '', mode_id: null }),
+    });
+    expect(res.status).toBe(400);
   });
 });

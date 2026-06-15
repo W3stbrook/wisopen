@@ -17,9 +17,20 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Typecheck (shared + backend providers)
+      - name: Typecheck (shared)
         run: npm run typecheck
       - name: Typecheck (desktop)
         run: npm --workspace @wisopen/desktop run typecheck
       - name: Unit tests (integration auto-skips without a live stack)
         run: npm test
+
+  edge-functions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Typecheck Deno edge functions
+        working-directory: backend/supabase/functions
+        run: deno check format/index.ts stt-stream/index.ts
