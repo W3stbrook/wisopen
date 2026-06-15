@@ -388,7 +388,9 @@ deno_version = 2
 # secret_key = "env(SECRET_VALUE)"
 
 [analytics]
-enabled = true
+# Logflare analytics + its vector log shipper are not needed by Wisopen and the
+# containers flap "unhealthy" on some machines, tearing down the whole stack.
+enabled = false
 port = 54327
 # Configure one of the supported backends: `postgres`, `bigquery`.
 backend = "postgres"
