@@ -50,7 +50,11 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
 
-# auto-update feed (set provider/url for real releases)
+# auto-update feed: GitHub Releases. electron-updater reads this from the baked
+# app-update.yml. A PUBLIC repo needs no token in the app; a private repo would.
+# >>> set owner/repo to your GitHub project before the first release <<<
 publish:
-  - provider: generic
-    url: https://example.com/wisopen/updates
+  - provider: github
+    owner: YOUR_GITHUB_USERNAME
+    repo: wisopen
+    releaseType: release # publish releases live so installed apps auto-update

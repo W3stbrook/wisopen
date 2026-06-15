@@ -47,6 +47,9 @@ export interface IpcInvoke {
 
   'dictation:start': () => void;
   'dictation:stop': () => void;
+
+  'update:install': () => void; // quit + apply a downloaded update now
+  'update:check': () => void; // manual "check for updates"
 }
 
 /** renderer -> main, fire-and-forget (ipcRenderer.send / ipcMain.on) */
@@ -57,11 +60,14 @@ export interface IpcSend {
   'engine:error': { message: string };
 }
 
+export type UpdateState = 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'error';
+
 /** main -> renderer pushes (ipcRenderer.on) */
 export interface IpcEvents {
   'overlay:state': { state: OverlayState; partial?: string; message?: string };
   'overlay:level': { level: number };
   'auth:changed': AuthStatus;
+  'update:status': { state: UpdateState; version?: string; percent?: number; message?: string };
   'engine:command': {
     cmd: 'start' | 'stop';
     jwt: string;

@@ -11,7 +11,7 @@ import { HotkeyManager } from './hotkey.js';
 import { injectText } from './injector.js';
 import { registerIpc } from './ipc.js';
 import { createTray } from './tray.js';
-import { initUpdater } from './updater.js';
+import { initUpdater, quitAndInstall, check as checkForUpdates } from './updater.js';
 
 let tray: Tray | null = null;
 let pendingDeepLink: string | null = null;
@@ -122,7 +122,13 @@ if (!app.requestSingleInstanceLock()) {
       if (s.signedIn) void refreshCache();
     });
 
-    registerIpc({ api, store, session, windows });
+    registerIpc({
+      api,
+      store,
+      session,
+      windows,
+      update: { install: quitAndInstall, check: checkForUpdates },
+    });
 
     // global push-to-talk hotkey (needs macOS Input Monitoring; may throw if denied)
     const settings = store.getSettings();
@@ -154,8 +160,12 @@ if (!app.requestSingleInstanceLock()) {
       };
     }
 
-    tray = createTray(windows, session);
-    initUpdater(cfg.updateFeedUrl);
+    const trayCtl = createTray(windows, session, () => quitAndInstall());
+    tray = trayCtl.tray;
+    initUpdater((s) => {
+      windows.send('update:status', s);
+      if (s.state === 'ready' && s.version) trayCtl.setUpdateReady(s.version);
+    });
 
     // route all future deep links straight to the handler; flush any captured before ready
     deepLinkSink = (url) => void handleDeepLink(api, windows, url);

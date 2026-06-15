@@ -16,6 +16,27 @@ const esc = (s: string): string =>
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
   );
 
+// live auto-update status (updates the Advanced tab if it's open)
+let latestUpdate = 'Up to date.';
+function fmtUpdate(s: { state: string; version?: string; percent?: number; message?: string }): string {
+  switch (s.state) {
+    case 'checking': return 'Checking for updates…';
+    case 'available': return `Downloading v${s.version}…`;
+    case 'downloading': return `Downloading… ${s.percent ?? 0}%`;
+    case 'ready': return `Update v${s.version} ready — restart to apply.`;
+    case 'error': return `Update error: ${s.message ?? 'unknown'}`;
+    default: return 'Up to date.';
+  }
+}
+window.wisopen.on('update:status', (payload) => {
+  const s = payload as { state: string; version?: string; percent?: number; message?: string };
+  latestUpdate = fmtUpdate(s);
+  const el = document.getElementById('updstatus');
+  if (el) el.textContent = latestUpdate;
+  const btn = document.getElementById('updinstall') as HTMLButtonElement | null;
+  if (btn) btn.style.display = s.state === 'ready' ? 'inline-block' : 'none';
+});
+
 const TABS = ['Account', 'Hotkeys', 'Modes', 'Shortcuts', 'Dictionary', 'History', 'Language', 'Advanced'] as const;
 type Tab = (typeof TABS)[number];
 
@@ -252,6 +273,15 @@ async function renderAdvanced(): Promise<void> {
       <label class="row"><input type="checkbox" id="hist" ${s.saveHistory ? 'checked' : ''} style="width:auto" /> &nbsp;Save dictation history locally</label>
       <button class="primary" id="save">Save</button>
       <p class="muted">Backend: ${esc(jwt.supabaseUrl)}</p>
+    </div>
+    <h2 style="margin-top:18px">Updates</h2>
+    <div class="card stack">
+      <div id="updstatus" class="muted">${esc(latestUpdate)}</div>
+      <div class="row">
+        <button id="updcheck">Check for updates</button>
+        <button class="primary" id="updinstall" style="display:none">Restart &amp; update</button>
+      </div>
+      <p class="muted">Updates download automatically and install on quit; "Restart &amp; update" applies one now.</p>
     </div>`;
   document.getElementById('save')?.addEventListener('click', async () => {
     await setSettings({
@@ -259,6 +289,8 @@ async function renderAdvanced(): Promise<void> {
       saveHistory: (document.getElementById('hist') as HTMLInputElement).checked,
     });
   });
+  document.getElementById('updcheck')?.addEventListener('click', () => w.invoke('update:check'));
+  document.getElementById('updinstall')?.addEventListener('click', () => w.invoke('update:install'));
 }
 
 buildNav();

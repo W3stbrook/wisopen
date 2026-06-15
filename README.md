@@ -96,10 +96,35 @@ npm run build:win              # → apps/desktop/release/*.exe  (run on Windows
 ```
 
 CI (`.github/workflows/`):
-- **ci.yml** — typecheck + unit tests on every push/PR.
-- **build.yml** — builds **macOS + Windows** installers on a `v*` tag (or manual dispatch),
-  uploads them as artifacts. Unsigned by default; set the signing secrets
-  (`APPLE_API_KEY*`, `WIN_CSC_*`) and flip `CSC_IDENTITY_AUTO_DISCOVERY` to sign + notarize.
+- **ci.yml** — typecheck + unit tests + `deno check` (+ a live Supabase integration job) on every push/PR.
+- **build.yml** — on a `v*` tag, builds **macOS + Windows** installers and **publishes them to a
+  GitHub Release** (manual `workflow_dispatch` builds artifacts without publishing).
+
+## Auto-update (Windows + macOS)
+
+Installed apps update themselves — no reinstall. The client (`electron-updater`) checks the
+GitHub Release feed on launch and every 3 h, **downloads new versions in the background**, and
+installs them on quit; the user can also click **Restart & update** (tray menu or Settings →
+Advanced) to apply one immediately.
+
+**One-time setup:**
+1. Push this repo to GitHub and set `publish.owner`/`publish.repo` in
+   `apps/desktop/electron-builder.yml` to your GitHub user + repo.
+2. Releasing = bump the version and tag it:
+   ```bash
+   npm version patch -w @wisopen/desktop   # or minor/major → bumps apps/desktop/package.json
+   git push --follow-tags                  # pushing the vX.Y.Z tag triggers build.yml
+   ```
+   CI builds both installers and publishes the GitHub Release; every installed app picks it up.
+
+**Platform reality:**
+- **Windows** — auto-update works immediately, even unsigned (first install may show a SmartScreen
+  "unknown publisher" notice; an optional OV/EV cert via `WIN_CSC_*` removes it).
+- **macOS** — auto-update **requires Apple code-signing + notarization** (Squirrel.Mac + Gatekeeper
+  requirement; not bypassable). Needs an **Apple Developer account ($99/yr)**. Until configured, the
+  Mac build is unsigned and does **not** auto-update. To enable it, add repo secrets `CSC_LINK`
+  (base64 `.p12`), `CSC_KEY_PASSWORD`, `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`,
+  `APPLE_TEAM_ID` — `build.yml` then signs + notarizes automatically (no code change).
 
 ## Migrating to Supabase Cloud
 

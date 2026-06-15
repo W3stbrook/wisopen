@@ -13,6 +13,7 @@ export interface IpcContext {
   store: Store;
   session: Session;
   windows: Windows;
+  update: { install: () => void; check: () => void };
 }
 
 export function registerIpc(ctx: IpcContext): void {
@@ -97,6 +98,10 @@ export function registerIpc(ctx: IpcContext): void {
   // dictation control (from UI or hotkey)
   h('dictation:start', () => session.start());
   h('dictation:stop', () => session.stop());
+
+  // auto-update
+  h('update:install', () => ctx.update.install());
+  h('update:check', () => ctx.update.check());
 
   // engine renderer -> main (fire-and-forget)
   ipcMain.on('engine:partial', (_e, p: { text: string }) => session.onPartial(p.text));
