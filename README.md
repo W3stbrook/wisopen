@@ -33,7 +33,7 @@ Provider API keys live **only** in the backend. The app never sees them. See
 
 ## Prerequisites
 
-- **Node 20+** and npm
+- **Node 22+** and npm (supabase-js needs a global `WebSocket`, added in Node 22)
 - **Docker** (for the local Supabase stack)
 - **Supabase CLI** (`brew install supabase/tap/supabase`)
 

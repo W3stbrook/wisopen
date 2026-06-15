@@ -12,6 +12,7 @@ jobs:
   build:
     strategy:
       fail-fast: false
+      max-parallel: 1 # serialize so the two jobs don't race to create the same Release
       matrix:
         include:
           - os: macos-latest
@@ -25,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
 
@@ -33,6 +34,7 @@ jobs:
       # Empty CSC_LINK must NOT be exported, or electron-builder tries to sign and fails.
       - name: Release (publish to GitHub Releases)
         if: github.ref_type == 'tag'
+        shell: bash # Windows runners default to PowerShell; this step is bash
         run: |
           if [ -n "$MAC_CSC_LINK" ]; then
             export CSC_LINK="$MAC_CSC_LINK" CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD" CSC_IDENTITY_AUTO_DISCOVERY=true
