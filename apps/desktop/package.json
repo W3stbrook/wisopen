@@ -11,6 +11,7 @@
     "preview": "electron-vite preview",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:win": "electron-vite build && electron-builder --win",
+    "test:e2e": "playwright test",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {

@@ -1,5 +1,6 @@
 import { app, session as electronSession, Tray } from 'electron';
 import { join } from 'node:path';
+import { expandSnippets, type Snippet } from '@wisopen/shared';
 import { getConfig } from './config.js';
 import { Store } from './store.js';
 import { SecretStore } from './secrets.js';
@@ -87,10 +88,27 @@ if (!app.requestSingleInstanceLock()) {
       () => session.stop(),
     );
     hotkey.setKey(settings.pttKey, settings.pttMode);
-    try {
-      hotkey.start();
-    } catch (e) {
-      console.warn('[hotkey] could not start global hook (permission?):', e);
+    if (process.env.WISOPEN_TEST_HOOKS !== '1') {
+      try {
+        hotkey.start();
+      } catch (e) {
+        console.warn('[hotkey] could not start global hook (permission?):', e);
+      }
+    }
+
+    // E2E test seam (no GUI/OS-permission side effects): exercise the app-level
+    // format + snippet-expansion path against the live backend.
+    if (process.env.WISOPEN_TEST_HOOKS === '1') {
+      (globalThis as Record<string, unknown>).__wisopenTest = {
+        authStatus: () => api.status(),
+        formatLoop: async (args: { transcript: string; snippets: Snippet[] }) => {
+          const resp = await api.callFormat({
+            transcript: args.transcript,
+            mode_id: store.getSettings().defaultModeId,
+          });
+          return expandSnippets(resp.final_text, args.snippets);
+        },
+      };
     }
 
     tray = createTray(windows, session);
