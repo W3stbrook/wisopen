@@ -46,7 +46,8 @@ jobs:
           cache: npm
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.104.0 # pinned to the version the suite is verified against
+          # (newer CLIs change local JWT signing so user-scoped RLS requests differ)
       - run: npm ci
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
