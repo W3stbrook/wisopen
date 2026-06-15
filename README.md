@@ -108,8 +108,8 @@ installs them on quit; the user can also click **Restart & update** (tray menu o
 Advanced) to apply one immediately.
 
 **One-time setup:**
-1. Push this repo to GitHub and set `publish.owner`/`publish.repo` in
-   `apps/desktop/electron-builder.yml` to your GitHub user + repo.
+1. Repo published at `github.com/W3stbrook/wisopen` and `publish.owner`/`publish.repo` in
+   `apps/desktop/electron-builder.yml` are set accordingly.
 2. Releasing = bump the version and tag it:
    ```bash
    npm version patch -w @wisopen/desktop   # or minor/major → bumps apps/desktop/package.json

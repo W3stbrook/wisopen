@@ -55,6 +55,6 @@ nsis:
 # >>> set owner/repo to your GitHub project before the first release <<<
 publish:
   - provider: github
-    owner: YOUR_GITHUB_USERNAME
+    owner: W3stbrook
     repo: wisopen
     releaseType: release # publish releases live so installed apps auto-update
