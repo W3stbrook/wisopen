@@ -1,0 +1,45 @@
+# dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# build output
+dist/
+out/
+build/
+release/
+*.tsbuildinfo
+
+# electron-builder artifacts
+apps/desktop/dist/
+apps/desktop/release/
+
+# supabase local
+backend/supabase/.branches/
+backend/supabase/.temp/
+backend/supabase/functions/.env
+**/.env
+**/.env.local
+!**/.env.example
+
+# logs
+*.log
+npm-debug.log*
+
+# os
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# test / coverage
+coverage/
+playwright-report/
+test-results/
+
+# local db / secrets
+*.sqlite
+*.sqlite3
