@@ -29,24 +29,32 @@ jobs:
           cache: npm
       - run: npm ci
 
-      # On a tag: build, sign (if secrets present) and PUBLISH to the GitHub Release.
+      # On a tag: build, sign (only if cert secrets are present) and PUBLISH to the Release.
+      # Empty CSC_LINK must NOT be exported, or electron-builder tries to sign and fails.
       - name: Release (publish to GitHub Releases)
         if: github.ref_type == 'tag'
-        run: npm --workspace @wisopen/desktop run ${{ matrix.release }}
+        run: |
+          if [ -n "$MAC_CSC_LINK" ]; then
+            export CSC_LINK="$MAC_CSC_LINK" CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD" CSC_IDENTITY_AUTO_DISCOVERY=true
+          else
+            export CSC_IDENTITY_AUTO_DISCOVERY=false   # clean unsigned mac build
+          fi
+          if [ -n "$WIN_CSC_LINK_S" ]; then
+            export WIN_CSC_LINK="$WIN_CSC_LINK_S" WIN_CSC_KEY_PASSWORD="$WIN_CSC_KEY_PASSWORD_S"
+          fi
+          npm --workspace @wisopen/desktop run ${{ matrix.release }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS signing+notarization — unsigned until these Apple secrets are set.
-          # When present, also set CSC_IDENTITY_AUTO_DISCOVERY=true to enable signing.
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.APPLE_API_KEY != '' && 'true' || 'false' }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # macOS signing+notarization — only active once these secrets are set
+          MAC_CSC_LINK: ${{ secrets.CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           # Windows code-signing (optional; auto-update works unsigned)
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          WIN_CSC_LINK_S: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD_S: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
       # Manual run: build installers without publishing, upload as artifacts.
       - name: Build (no publish)
