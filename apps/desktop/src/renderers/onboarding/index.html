@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src http: https:;" />
+    <title>Welcome to Wisopen</title>
+    <link rel="stylesheet" href="../shared-ui/app.css" />
+    <style>
+      body { padding: 28px; }
+      .step { margin-top: 18px; }
+      .perm { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    </style>
+  </head>
+  <body>
+    <h1>Welcome to Wisopen 🎙️</h1>
+    <p class="muted">Hold your hotkey, speak, and get clean text wherever you type.</p>
+
+    <div class="card step" id="authCard">
+      <h2>1 · Sign in</h2>
+      <label class="field"><span>Email</span><input id="email" type="email" placeholder="you@example.com" /></label>
+      <label class="field"><span>Password</span><input id="password" type="password" placeholder="••••••••" /></label>
+      <div class="row">
+        <button class="primary" id="signin">Sign in</button>
+        <button id="signup">Create account</button>
+        <span id="authMsg" class="muted"></span>
+      </div>
+    </div>
+
+    <div class="card step" id="permCard">
+      <h2>2 · Permissions</h2>
+      <div class="perm"><span>Microphone</span><span><span id="micStat" class="pill-badge">…</span> <button id="micBtn">Grant</button></span></div>
+      <div class="perm"><span>Accessibility (for inserting text)</span><span><span id="axStat" class="pill-badge">…</span> <button id="axBtn">Open settings</button></span></div>
+      <div class="perm"><span>Input Monitoring (for the hotkey)</span><span><button id="imBtn">Open settings</button></span></div>
+    </div>
+
+    <div class="card step" id="doneCard">
+      <h2>3 · You're set</h2>
+      <p class="muted">Default hotkey: <span class="pill-badge" id="hotkey">F13</span> (changeable in Settings). Hold it and talk.</p>
+      <button class="primary" id="finish">Open Wisopen</button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <script type="module" src="./onboarding.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,78 @@
+:root {
+  --bg: rgba(20, 22, 28, 0.92);
+  --fg: #f4f5f7;
+  --accent: #5b8cff;
+  --rec: #ff5b6e;
+  --ok: #46d39a;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  margin: 10px;
+  padding: 0 16px;
+  border-radius: 22px;
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: 0 0 auto;
+}
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+.meter {
+  margin-left: auto;
+  width: 34px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.meter > i {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  transition: width 80ms linear;
+}
+
+/* states */
+body[data-state="listening"] .dot { background: var(--rec); animation: pulse 1s infinite; }
+body[data-state="transcribing"] .dot { background: var(--rec); }
+body[data-state="polishing"] .dot { background: var(--accent); animation: pulse 0.7s infinite; }
+body[data-state="inserting"] .dot { background: var(--accent); }
+body[data-state="done"] .dot { background: var(--ok); }
+body[data-state="error"] .dot { background: #ffae42; }
+body[data-state="error"] .meter,
+body[data-state="polishing"] .meter,
+body[data-state="done"] .meter { visibility: hidden; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}

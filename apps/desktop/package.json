@@ -1,0 +1,30 @@
+{
+  "name": "@wisopen/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Wisopen desktop app (Electron, macOS + Windows)",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "rebuild": "electron-rebuild -f -m . -w uiohook-napi",
+    "preview": "electron-vite preview",
+    "build:mac": "electron-vite build && electron-builder --mac",
+    "build:win": "electron-vite build && electron-builder --win",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.6",
+    "@supabase/supabase-js": "^2.108.2",
+    "@wisopen/shared": "*",
+    "electron-updater": "^6.8.9",
+    "uiohook-napi": "^1.5.5"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
+    "electron": "^42.4.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^3.1.0",
+    "vite": "^6.0.0"
+  }
+}
