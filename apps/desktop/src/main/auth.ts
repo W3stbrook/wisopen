@@ -62,8 +62,11 @@ export class ApiClient {
     return this.status();
   }
 
-  async signOut(): Promise<void> {
-    await this.supabase.auth.signOut();
+  async signOut(): Promise<AuthStatus> {
+    const { error } = await this.supabase.auth.signOut();
+    // Already signed out / stale session — treat as success for the UI.
+    if (error && !/session/i.test(error.message)) throw error;
+    return this.status();
   }
 
   async getJwt(): Promise<string | null> {

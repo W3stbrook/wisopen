@@ -1,6 +1,6 @@
 // Overlay pill: reflects dictation state ('overlay:state') and mic level ('overlay:level').
 
-type State = 'idle' | 'listening' | 'transcribing' | 'polishing' | 'inserting' | 'done' | 'error';
+type State = 'idle' | 'listening' | 'transcribing' | 'polishing' | 'inserting' | 'done' | 'cancelled' | 'error';
 interface StatePayload {
   state: State;
   partial?: string;
@@ -14,6 +14,7 @@ const labels: Record<State, string> = {
   polishing: 'Polishing…',
   inserting: 'Inserting…',
   done: 'Done',
+  cancelled: 'No speech detected',
   error: 'Error',
 };
 
@@ -25,8 +26,13 @@ window.wisopen.on('overlay:state', (payload) => {
   document.body.dataset.state = p.state;
   if (p.state === 'transcribing' && p.partial) {
     label.textContent = p.partial;
+  } else if (p.state === 'listening' && p.message) {
+    label.textContent = p.message;
   } else if (p.state === 'error') {
     label.textContent = p.message ?? 'Error';
+  } else if (p.state === 'idle') {
+    label.textContent = '';
+    meterFill.style.width = '0%';
   } else {
     label.textContent = labels[p.state] ?? '';
   }

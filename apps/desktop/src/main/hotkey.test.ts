@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { parseCombo, comboMatches, HotkeyManager } from './hotkey.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { parseCombo, comboMatches, formatCombo, HotkeyManager, HOLD_DELAY_MS, DOUBLE_TAP_MS } from './hotkey.js';
 import { UiohookKey } from 'uiohook-napi';
 
 const ev = (over: Partial<{ keycode: number; ctrlKey: boolean; metaKey: boolean; altKey: boolean; shiftKey: boolean }>) => ({
@@ -9,6 +9,18 @@ const ev = (over: Partial<{ keycode: number; ctrlKey: boolean; metaKey: boolean;
   altKey: false,
   shiftKey: false,
   ...over,
+});
+
+describe('formatCombo', () => {
+  it('formats a single key', () => {
+    expect(formatCombo(ev({ keycode: UiohookKey.F13 }))).toBe('F13');
+  });
+  it('formats a chord', () => {
+    expect(formatCombo(ev({ keycode: UiohookKey.Space, ctrlKey: true }))).toBe('Ctrl+Space');
+  });
+  it('ignores modifier-only presses', () => {
+    expect(formatCombo(ev({ keycode: UiohookKey.Ctrl, ctrlKey: true }))).toBeNull();
+  });
 });
 
 describe('parseCombo', () => {
@@ -47,8 +59,8 @@ describe('HotkeyManager (hold)', () => {
     const down = (m as unknown as { handleDown: (e: unknown) => void }).handleDown;
     const up = (m as unknown as { handleUp: (e: unknown) => void }).handleUp;
     down(ev({ keycode: UiohookKey.F13 }));
-    down(ev({ keycode: UiohookKey.F13 })); // repeat down should not re-fire
     expect(onStart).toHaveBeenCalledTimes(1);
+    down(ev({ keycode: UiohookKey.F13 })); // repeat down should not re-fire
     up(ev({ keycode: UiohookKey.F13 }));
     expect(onStop).toHaveBeenCalledTimes(1);
   });
@@ -67,6 +79,62 @@ describe('HotkeyManager (hold)', () => {
   });
 });
 
+describe('HotkeyManager (hybrid)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('starts hold-PTT after the hold delay', () => {
+    const onStart = vi.fn();
+    const onStop = vi.fn();
+    const m = new HotkeyManager(onStart, onStop);
+    m.setKey('F13', 'hybrid');
+    const down = (m as unknown as { handleDown: (e: unknown) => void }).handleDown;
+    const up = (m as unknown as { handleUp: (e: unknown) => void }).handleUp;
+    down(ev({ keycode: UiohookKey.F13 }));
+    expect(onStart).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(HOLD_DELAY_MS);
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onStart.mock.calls[0]?.length ?? 0).toBe(0);
+    up(ev({ keycode: UiohookKey.F13 }));
+    expect(onStop).toHaveBeenCalledTimes(1);
+  });
+
+  it('double-tap enters hands-free until the next press', () => {
+    const onStart = vi.fn();
+    const onStop = vi.fn();
+    const m = new HotkeyManager(onStart, onStop);
+    m.setKey('F13', 'hybrid');
+    const down = (m as unknown as { handleDown: (e: unknown) => void }).handleDown;
+    const up = (m as unknown as { handleUp: (e: unknown) => void }).handleUp;
+    down(ev({ keycode: UiohookKey.F13 }));
+    up(ev({ keycode: UiohookKey.F13 }));
+    vi.advanceTimersByTime(50);
+    down(ev({ keycode: UiohookKey.F13 }));
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onStart).toHaveBeenCalledWith({ handsFree: true });
+    up(ev({ keycode: UiohookKey.F13 }));
+    expect(onStop).not.toHaveBeenCalled();
+    down(ev({ keycode: UiohookKey.F13 }));
+    expect(onStop).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not treat slow second taps as double-tap', () => {
+    const onStart = vi.fn();
+    const onStop = vi.fn();
+    const m = new HotkeyManager(onStart, onStop);
+    m.setKey('F13', 'hybrid');
+    const down = (m as unknown as { handleDown: (e: unknown) => void }).handleDown;
+    const up = (m as unknown as { handleUp: (e: unknown) => void }).handleUp;
+    down(ev({ keycode: UiohookKey.F13 }));
+    up(ev({ keycode: UiohookKey.F13 }));
+    vi.advanceTimersByTime(DOUBLE_TAP_MS + 50);
+    down(ev({ keycode: UiohookKey.F13 }));
+    vi.advanceTimersByTime(HOLD_DELAY_MS);
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onStart.mock.calls[0]?.length ?? 0).toBe(0);
+  });
+});
+
 describe('HotkeyManager (toggle)', () => {
   it('flips on each key-down; key-up is a no-op', () => {
     const onStart = vi.fn();
@@ -77,6 +145,7 @@ describe('HotkeyManager (toggle)', () => {
     const up = (m as unknown as { handleUp: (e: unknown) => void }).handleUp;
     down(ev({ keycode: UiohookKey.F13 }));
     expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onStart).toHaveBeenCalledWith({ handsFree: true });
     up(ev({ keycode: UiohookKey.F13 }));
     expect(onStop).not.toHaveBeenCalled();
     down(ev({ keycode: UiohookKey.F13 }));

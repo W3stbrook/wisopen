@@ -5,45 +5,176 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src http: https:;" />
     <title>Welcome to Wisopen</title>
     <link rel="stylesheet" href="../shared-ui/app.css" />
-    <style>
-      body { padding: 28px; }
-      .step { margin-top: 18px; }
-      .perm { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
-    </style>
+    <link rel="stylesheet" href="./onboarding.css" />
   </head>
   <body>
-    <h1>Welcome to Wisopen 🎙️</h1>
-    <p class="muted">Hold your hotkey, speak, and get clean text wherever you type.</p>
+    <div class="onboarding">
+      <header class="onboarding-header">
+        <div class="onboarding-brand">Wisopen</div>
+        <div class="onboarding-progress" id="progress" aria-hidden="true"></div>
+      </header>
 
-    <div class="card step" id="authCard">
-      <h2>1 · Sign in</h2>
-      <label class="field"><span>Email</span><input id="email" type="email" placeholder="you@example.com" /></label>
-      <label class="field"><span>Password</span><input id="password" type="password" placeholder="••••••••" /></label>
-      <div class="row">
-        <button class="primary" id="signin">Sign in</button>
-        <button id="signup">Create account</button>
-        <span id="authMsg" class="muted"></span>
-      </div>
-    </div>
+      <main class="onboarding-main">
+        <!-- 1 · Welcome -->
+        <section class="onboarding-step active" data-step="welcome">
+          <div class="welcome-icon" aria-hidden="true">
+            <svg width="40" height="40" viewBox="0 0 34 34" fill="none">
+              <g stroke="#fff" stroke-width="3" stroke-linecap="round">
+                <line x1="9" y1="13.5" x2="9" y2="20.5" />
+                <line x1="14.3" y1="9.5" x2="14.3" y2="24.5" />
+                <line x1="19.7" y1="7" x2="19.7" y2="27" />
+                <line x1="25" y1="12.5" x2="25" y2="21.5" />
+              </g>
+            </svg>
+          </div>
+          <h1>Don't type.<br />Just speak.</h1>
+          <p class="lead">
+            Hold a hotkey, talk naturally, and get <strong>clean text pasted into any app</strong> —
+            Slack, Mail, Notion, wherever you already work.
+          </p>
+          <div class="onboarding-visual">
+            <div class="mic-bars live" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+        </section>
 
-    <div class="card step" id="permCard">
-      <h2>2 · Permissions</h2>
-      <div class="perm"><span>Microphone</span><span><span id="micStat" class="pill-badge">…</span> <button id="micBtn">Grant</button></span></div>
-      <div class="perm"><span>Accessibility (for inserting text)</span><span><span id="axStat" class="pill-badge">…</span> <button id="axBtn">Open settings</button></span></div>
-      <div class="perm"><span>Input Monitoring (for the hotkey)</span><span><button id="imBtn">Open settings</button></span></div>
-    </div>
+        <!-- 2 · Account -->
+        <section class="onboarding-step" data-step="auth">
+          <h1>Create your account</h1>
+          <p class="lead">Sync snippets, dictionary, and history across devices. Takes 10 seconds.</p>
+          <div class="auth-form">
+            <label class="field"><span>Email</span><input id="email" type="email" placeholder="you@example.com" autocomplete="email" /></label>
+            <label class="field"><span>Password</span><input id="password" type="password" placeholder="At least 8 characters" autocomplete="new-password" /></label>
+          </div>
+          <p id="authMsg" class="auth-success hidden" role="status"></p>
+          <p id="authErr" class="auth-error" role="alert"></p>
+          <p class="auth-toggle">
+            <span id="authToggleLabel">Already have an account?</span>
+            <button type="button" id="authToggle">Sign in</button>
+          </p>
+          <!-- kept for e2e + IPC; primary footer button triggers these -->
+          <button type="button" id="signup" class="hidden" aria-hidden="true">Create account</button>
+          <button type="button" id="signin" class="hidden" aria-hidden="true">Sign in</button>
+        </section>
 
-    <div class="card step" id="doneCard">
-      <h2>3 · Hotkey & mic test</h2>
-      <label class="field"><span>Push-to-talk key (e.g. F13, or Ctrl+Space — not Fn)</span>
-        <input id="hotkey" value="F13" /></label>
-      <div class="row">
-        <button id="saveHotkey">Save hotkey</button>
-        <button id="micTest">Try a sample dictation</button>
-        <span id="micMsg" class="muted"></span>
-      </div>
-      <p class="muted" style="margin-top:12px">Then just hold your hotkey anywhere and talk.</p>
-      <button class="primary" id="finish">Open Wisopen</button>
+        <!-- 3 · Microphone -->
+        <section class="onboarding-step" data-step="mic">
+          <h1>Let Wisopen hear you</h1>
+          <p class="lead">Your voice stays on your device until you dictate. We only use the mic while you hold the hotkey.</p>
+          <div class="onboarding-visual">
+            <div class="mic-bars" id="micBars" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+          <div class="perm-list">
+            <div class="perm-item" id="micRow">
+              <div class="perm-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="6.7" y="2.5" width="4.6" height="8" rx="2.3" />
+                  <path d="M4.5 8.4a4.5 4.5 0 0 0 9 0" />
+                  <path d="M9 12.9v2.6" />
+                </svg>
+              </div>
+              <div class="perm-body">
+                <h3>Microphone</h3>
+                <p>Required to transcribe your speech.</p>
+              </div>
+              <div class="perm-action">
+                <span id="micStat" class="pill-badge">checking…</span>
+                <button type="button" id="micBtn">Allow microphone</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4 · System access -->
+        <section class="onboarding-step" data-step="access">
+          <h1>Paste into any app</h1>
+          <p class="lead">Two macOS permissions let Wisopen insert polished text at your cursor and listen for your hotkey globally.</p>
+          <div class="perm-list">
+            <div class="perm-item" id="axRow">
+              <div class="perm-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2.5" y="4.5" width="13" height="9" rx="2" />
+                  <path d="M5 7.5h.01M8 7.5h.01M11 7.5h.01M5 10.5h6" />
+                </svg>
+              </div>
+              <div class="perm-body">
+                <h3>Accessibility</h3>
+                <p>Pastes dictated text into Slack, Mail, and other apps.</p>
+              </div>
+              <div class="perm-action">
+                <span id="axStat" class="pill-badge">needed</span>
+                <button type="button" id="axBtn">Open settings</button>
+              </div>
+            </div>
+            <div class="perm-item" id="imRow">
+              <div class="perm-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9.5 2.5 4 9.8h3.6L8 15.5 14 8.2h-3.6z" />
+                </svg>
+              </div>
+              <div class="perm-body">
+                <h3>Input monitoring</h3>
+                <p>Lets the global hotkey work from any app.</p>
+              </div>
+              <div class="perm-action">
+                <span id="imStat" class="pill-badge">needed</span>
+                <button type="button" id="imBtn">Open settings</button>
+              </div>
+            </div>
+          </div>
+          <p class="lead access-hint">Enable Wisopen in each pane, then return here — we'll detect it automatically.</p>
+        </section>
+
+        <!-- 5 · Hotkey -->
+        <section class="onboarding-step" data-step="hotkey">
+          <h1>Pick your hotkey</h1>
+          <p class="lead">Press the key combination you want to use anywhere on your Mac.</p>
+          <div class="hotkey-capture-box">
+            <div class="hotkey-display" id="hotkeyCaptureBox">
+              <kbd id="hotkeyPreview">F13</kbd>
+            </div>
+            <button type="button" id="captureHotkey" class="capture-btn">
+              <span class="rec-dot" aria-hidden="true"></span>
+              <span id="captureLabel">Press to record shortcut</span>
+            </button>
+            <input type="hidden" id="hotkey" value="F13" />
+            <p class="hotkey-hint">Hold for a quick phrase, or <strong>double-tap</strong> for hands-free listening (press once to finish).</p>
+          </div>
+        </section>
+
+        <!-- 6 · Try it -->
+        <section class="onboarding-step" data-step="try">
+          <h1>Try your first dictation</h1>
+          <p class="lead">Press the button below, speak a short sentence, and watch the overlay polish your words.</p>
+          <button type="button" class="primary try-btn" id="micTest">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="6.7" y="2.5" width="4.6" height="8" rx="2.3" />
+              <path d="M4.5 8.4a4.5 4.5 0 0 0 9 0" />
+              <path d="M9 12.9v2.6" />
+            </svg>
+            Start a test
+          </button>
+          <div class="try-status" id="micMsg">
+            <span class="try-dot" aria-hidden="true"></span>
+            <span id="micMsgText">Watch the overlay run the full pipeline.</span>
+          </div>
+        </section>
+      </main>
+
+      <footer class="onboarding-footer">
+        <div class="footer-left">
+          <button type="button" class="ghost hidden" id="back">Back</button>
+          <button type="button" class="ghost hidden" id="skip">Skip setup</button>
+        </div>
+        <div class="footer-right">
+          <button type="button" class="primary" id="next">Get started</button>
+          <button type="button" class="primary hidden" id="finish">Open Wisopen</button>
+          <button type="button" class="hidden" id="saveHotkey" aria-hidden="true">Save hotkey</button>
+        </div>
+      </footer>
     </div>
 
     <div class="toast" id="toast"></div>

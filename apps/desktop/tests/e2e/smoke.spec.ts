@@ -49,13 +49,14 @@ test.describe('Wisopen desktop smoke', () => {
     // 1. app boots and opens the onboarding window (engine window opens first + hidden)
     await app.firstWindow();
     const win = await windowByUrl(app, 'onboarding');
-    await expect(win.locator('h1')).toContainText('Welcome to Wisopen', { timeout: 20_000 });
+    await expect(win.locator('.onboarding-brand')).toContainText('Wisopen', { timeout: 20_000 });
 
-    // 2. sign up a fresh user via the onboarding form (autoconfirm is on locally)
+    // 2. sign up a fresh user via the onboarding wizard (autoconfirm is on locally)
+    await win.click('#next'); // welcome → auth
     const email = `e2e_${Date.now()}@wisopen.test`;
     await win.fill('#email', email);
     await win.fill('#password', 'password123!');
-    await win.click('#signup');
+    await win.click('#next');
     await expect(win.locator('#authMsg')).toContainText('Signed in as', { timeout: 20_000 });
 
     // 3. app-level format + snippet expansion against the live backend (mock LLM)

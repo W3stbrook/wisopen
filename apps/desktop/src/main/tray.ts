@@ -1,11 +1,25 @@
 import { Tray, Menu, nativeImage, app, type MenuItemConstructorOptions } from 'electron';
 import type { Windows } from './windows.js';
 import type { Session } from './session.js';
+import {
+  TRAY_TEMPLATE_1X,
+  TRAY_TEMPLATE_2X,
+  TRAY_COLOR_1X,
+  TRAY_COLOR_2X,
+} from './tray-icons.js';
 
-// Embedded 22×22 brand-blue dot — works on Windows/Linux trays (an empty image is
-// invisible on Windows). macOS additionally shows the title text next to it.
-const TRAY_ICON_DATA_URL =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAAhElEQVR4nL2VsQ3AIAwE2TONB0rHHB7Ke1giFCDFyAhE/CmuQeiAB5t03SUhWE2gClekog1pY3QipiYoC2S2gCfNG8KRvBKfSF35ePxTaYc88U6mO5kbccRuza67mAPF/BZHxGDi6GINFOsvYlgUsMuDPTdYgUBLGtaEoG0T2uihX9NnHikOz/FEI/EsAAAAAElFTkSuQmCC';
+/**
+ * Wisopen waveform tray icon. On macOS it's a black template image that the OS tints
+ * for the light/dark menu bar; elsewhere it's the jade mark (template images don't
+ * apply, and a black icon would vanish on Windows' dark tray). Both carry a @2x rep.
+ */
+function trayImage(): Electron.NativeImage {
+  const isMac = process.platform === 'darwin';
+  const img = nativeImage.createFromDataURL(isMac ? TRAY_TEMPLATE_1X : TRAY_COLOR_1X);
+  img.addRepresentation({ scaleFactor: 2, dataURL: isMac ? TRAY_TEMPLATE_2X : TRAY_COLOR_2X });
+  if (isMac) img.setTemplateImage(true);
+  return img;
+}
 
 export interface TrayController {
   tray: Tray;
@@ -18,9 +32,9 @@ export function createTray(
   session: Session,
   onInstallUpdate: () => void,
 ): TrayController {
-  const img = nativeImage.createFromDataURL(TRAY_ICON_DATA_URL);
+  const img = trayImage();
   const tray = new Tray(img.isEmpty() ? nativeImage.createEmpty() : img);
-  if (process.platform === 'darwin') tray.setTitle('◉ Wisopen');
+  // Icon-only menu bar (the waveform mark is the brand); tooltip carries the name.
   tray.setToolTip('Wisopen — voice dictation');
 
   let updateItems: MenuItemConstructorOptions[] = [];
@@ -31,14 +45,14 @@ export function createTray(
         { label: 'Start dictation', click: () => void session.start() },
         { label: 'Stop', click: () => session.stop() },
         { type: 'separator' },
-        { label: 'Settings…', click: () => windows.showSettings() },
+        { label: 'Settings…', click: () => windows.showSettings('home') },
         { type: 'separator' },
         { label: 'Quit Wisopen', click: () => app.quit() },
       ]),
     );
   };
   rebuild();
-  tray.on('click', () => windows.showSettings());
+  tray.on('click', () => windows.showSettings('home'));
 
   return {
     tray,

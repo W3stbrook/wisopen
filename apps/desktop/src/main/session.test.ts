@@ -35,7 +35,7 @@ describe('Session orchestration', () => {
     const s = new Session(deps);
     await s.start();
     s.onPartial('hello wo');
-    await s.onFinal({ text: 'world', audioSeconds: 1.2 });
+    await s.onFinal({ text: 'um actually hello world', audioSeconds: 1.2 });
 
     expect(log).toEqual([
       'overlay:listening',
@@ -46,8 +46,19 @@ describe('Session orchestration', () => {
       'overlay:done',
       'history',
     ]);
-    // format produced "Hello world." then snippet expanded world->WORLD
-    expect(injected).toEqual(['Hello WORLD.']);
+    expect(injected).toEqual(['Hello um actually hello WORLD.']);
+  });
+
+  it('skips LLM polish for clean short transcripts', async () => {
+    const callFormat = vi.fn();
+    const { deps, log, injected } = makeDeps({ callFormat });
+    const s = new Session(deps);
+    await s.start();
+    await s.onFinal({ text: 'world', audioSeconds: 1.2 });
+
+    expect(callFormat).not.toHaveBeenCalled();
+    expect(log).not.toContain('overlay:polishing');
+    expect(injected).toEqual(['WORLD']);
   });
 
   it('errors to overlay when not signed in', async () => {
@@ -65,7 +76,7 @@ describe('Session orchestration', () => {
     });
     const s = new Session(deps);
     await s.start();
-    await s.onFinal({ text: 'x', audioSeconds: 1 });
+    await s.onFinal({ text: 'um actually hello there', audioSeconds: 1 });
     expect(log).toContain('overlay:error');
   });
 
@@ -87,5 +98,24 @@ describe('Session orchestration', () => {
     await s.start();
     await s.onFinal({ text: 'world', audioSeconds: 1 });
     expect(log).not.toContain('history');
+  });
+
+  it('cancels quietly when no speech is detected', async () => {
+    const { deps, log } = makeDeps();
+    const s = new Session(deps);
+    await s.start();
+    s.onNoSpeech();
+    expect(log).toContain('overlay:cancelled');
+    expect(log).not.toContain('overlay:error');
+  });
+
+  it('treats empty final transcript as no speech', async () => {
+    const callFormat = vi.fn();
+    const { deps, log } = makeDeps({ callFormat });
+    const s = new Session(deps);
+    await s.start();
+    await s.onFinal({ text: '   ', audioSeconds: 0 });
+    expect(callFormat).not.toHaveBeenCalled();
+    expect(log).toContain('overlay:cancelled');
   });
 });

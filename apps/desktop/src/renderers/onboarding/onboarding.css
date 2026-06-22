@@ -1,0 +1,395 @@
+/* Onboarding wizard — extends shared-ui/app.css tokens */
+
+.onboarding {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 0;
+}
+
+.onboarding-header {
+  padding: 20px 28px 0;
+  flex-shrink: 0;
+}
+
+.onboarding-brand {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.onboarding-progress {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.onboarding-progress .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+  transition: width 0.2s ease, background 0.2s ease;
+}
+
+/* Active step is a widened pill, completed steps are green dots. */
+.onboarding-progress .dot.active {
+  width: 22px;
+  background: var(--accent);
+}
+
+.onboarding-progress .dot.done {
+  background: var(--success);
+}
+
+.onboarding-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 40px;
+  overflow: auto;
+}
+
+.onboarding-step {
+  display: none;
+  width: 100%;
+  max-width: 400px;
+  animation: step-in 0.22s ease-out;
+}
+
+.onboarding-step.active {
+  display: block;
+}
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.welcome-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(150deg, #3ad6c2, #129e8d);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 26px;
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.onboarding-step h1 {
+  font-size: 26px;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0 0 10px;
+}
+
+.onboarding-step[data-step="welcome"] h1 {
+  font-size: 30px;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  margin-bottom: 14px;
+}
+
+.onboarding-step .lead {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0 0 28px;
+}
+
+.onboarding-step[data-step="welcome"] .lead {
+  font-size: 15px;
+}
+
+.onboarding-step .lead.access-hint {
+  margin-bottom: 0;
+  font-size: 13px;
+}
+
+.onboarding-step .lead strong {
+  color: #e6e9ee;
+  font-weight: 500;
+}
+
+.onboarding-visual {
+  margin: 0 0 28px;
+  padding: 20px;
+  border-radius: var(--radius);
+  background: linear-gradient(145deg, var(--panel) 0%, var(--panel-2) 100%);
+  border: 1px solid var(--border);
+}
+
+.mic-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  height: 56px;
+}
+
+.mic-bars span {
+  display: block;
+  width: 5px;
+  border-radius: 3px;
+  background: var(--accent);
+  opacity: 0.5;
+  animation: mic-pulse 1.1s ease-in-out infinite;
+}
+
+.mic-bars span:nth-child(1) { height: 22px; animation-delay: 0s; }
+.mic-bars span:nth-child(2) { height: 40px; opacity: 0.75; animation-delay: 0.12s; }
+.mic-bars span:nth-child(3) { height: 56px; background: var(--accent-strong); opacity: 1; animation-delay: 0.24s; }
+.mic-bars span:nth-child(4) { height: 40px; opacity: 0.75; animation-delay: 0.36s; }
+.mic-bars span:nth-child(5) { height: 26px; animation-delay: 0.48s; }
+
+.mic-bars.live span {
+  opacity: 1;
+}
+
+@keyframes mic-pulse {
+  0%, 100% { transform: scaleY(0.55); }
+  50% { transform: scaleY(1); }
+}
+
+.hotkey-preview {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 15px;
+  text-align: center;
+  padding: 14px;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  color: var(--fg);
+}
+
+.perm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.perm-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--border);
+}
+
+.perm-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-2);
+  color: #c2c9d4;
+  flex-shrink: 0;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* Granted permission rows take a jade-green tint. */
+.perm-item.granted .perm-icon {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 16%, var(--panel-2));
+}
+
+.perm-body h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.perm-body p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.perm-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.perm-action button {
+  font-size: 12px;
+  padding: 5px 11px;
+  white-space: nowrap;
+}
+
+.auth-form {
+  margin-bottom: 8px;
+}
+
+.auth-toggle {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.auth-toggle button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 0;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.auth-toggle button:hover {
+  border: none;
+}
+
+.auth-error {
+  color: var(--danger);
+  font-size: 13px;
+  margin-top: 10px;
+  min-height: 1.2em;
+}
+
+.auth-success {
+  color: var(--accent-2);
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+.onboarding-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 28px 24px;
+  border-top: 1px solid #20242e;
+  flex-shrink: 0;
+}
+
+.onboarding-footer .footer-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.onboarding-footer .footer-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.onboarding-footer button.primary {
+  min-width: 150px;
+  padding: 11px 22px;
+  border-radius: 9px;
+  font-size: 14px;
+}
+
+.onboarding-footer button.ghost {
+  border: none;
+  background: transparent;
+  padding: 6px 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.onboarding-footer button.ghost:hover {
+  border: none;
+  color: var(--fg);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Hotkey capture button with recording indicator */
+.capture-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px;
+  border-radius: 9px;
+  font-size: 14px;
+}
+
+.capture-btn .rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 20%, transparent);
+  display: none;
+}
+
+.capture-btn.recording .rec-dot {
+  display: block;
+  animation: glow-rec 1.4s ease-in-out infinite;
+}
+
+@keyframes glow-rec {
+  0%, 100% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 24%, transparent); }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 10%, transparent); }
+}
+
+/* Try step */
+.try-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  border-radius: 11px;
+}
+
+.try-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  font-size: 13px;
+  color: var(--fg);
+}
+
+.try-status .try-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.try-status.active .try-dot {
+  background: var(--danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 22%, transparent);
+}

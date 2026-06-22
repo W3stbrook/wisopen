@@ -1,4 +1,4 @@
-import { app, session as electronSession, Tray } from 'electron';
+import { app, session as electronSession, nativeImage, Tray } from 'electron';
 import { join, resolve } from 'node:path';
 import { expandSnippets, type Snippet } from '@wisopen/shared';
 import { getConfig } from './config.js';
@@ -71,7 +71,12 @@ if (!app.requestSingleInstanceLock()) {
     windows.createEngine();
     windows.createOverlay();
 
-    const session = new Session({
+    let session!: Session;
+    const hotkey = new HotkeyManager(
+      (opts) => void session.start(opts),
+      () => session.stop(),
+    );
+    session = new Session({
       getJwt: () => api.getJwt(),
       callFormat: (req) => api.callFormat(req),
       getSettings: () => store.getSettings(),
@@ -101,6 +106,7 @@ if (!app.requestSingleInstanceLock()) {
       },
       supabaseUrl: cfg.supabaseUrl,
       sampleRate: cfg.sampleRate,
+      onIdle: () => hotkey.releaseActiveState(),
     });
 
     // populate the local cache (snippets/dictionary/modes) so the dictation loop has
@@ -122,20 +128,8 @@ if (!app.requestSingleInstanceLock()) {
       if (s.signedIn) void refreshCache();
     });
 
-    registerIpc({
-      api,
-      store,
-      session,
-      windows,
-      update: { install: quitAndInstall, check: checkForUpdates },
-    });
-
     // global push-to-talk hotkey (needs macOS Input Monitoring; may throw if denied)
     const settings = store.getSettings();
-    const hotkey = new HotkeyManager(
-      () => void session.start(),
-      () => session.stop(),
-    );
     hotkey.setKey(settings.pttKey, settings.pttMode);
     if (process.env.WISOPEN_TEST_HOOKS !== '1') {
       try {
@@ -144,6 +138,15 @@ if (!app.requestSingleInstanceLock()) {
         console.warn('[hotkey] could not start global hook (permission?):', e);
       }
     }
+
+    registerIpc({
+      api,
+      store,
+      session,
+      windows,
+      hotkey,
+      update: { install: quitAndInstall, check: checkForUpdates },
+    });
 
     // E2E test seam (no GUI/OS-permission side effects): exercise the app-level
     // format + snippet-expansion path against the live backend.
@@ -182,8 +185,25 @@ if (!app.requestSingleInstanceLock()) {
 
     // onboarding if not signed in; otherwise warm the cache for the dictation loop
     const status = await api.status();
-    if (status.signedIn) void refreshCache();
-    else windows.showOnboarding();
+    if (status.signedIn) {
+      void refreshCache();
+      windows.showSettings();
+    } else {
+      windows.showOnboarding();
+    }
+
+    // Dev builds show in the Dock; production is menu-bar-only (LSUIElement). Set the
+    // Wisopen icon so the dev Dock/app-switcher shows the brand mark, not Electron's.
+    // (Packaged macOS uses build/icon.icns automatically.)
+    if (!app.isPackaged && process.platform === 'darwin') {
+      try {
+        const dockIcon = nativeImage.createFromPath(join(app.getAppPath(), 'build', 'icon.png'));
+        if (!dockIcon.isEmpty()) app.dock?.setIcon(dockIcon);
+      } catch {
+        /* icon is cosmetic in dev — ignore load failures */
+      }
+      app.dock?.show();
+    }
   });
 
   // tray app: keep running when all windows are closed

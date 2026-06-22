@@ -81,14 +81,18 @@ export class Windows {
       this.overlay.hide();
       return;
     }
+    this.overlay.setSize(state === 'error' ? 340 : 280, state === 'error' ? 72 : 64);
     this.positionOverlay();
     if (!this.overlay.isVisible()) this.overlay.showInactive();
     this.overlay.webContents.send('overlay:state', { state, ...extra });
-    if (state === 'done') {
+    // Auto-hide timing per design tokens (motion.overlay-*).
+    const hideMs = state === 'done' ? 1200 : state === 'cancelled' ? 1600 : state === 'error' ? 4000 : null;
+    if (hideMs !== null) {
       this.hideTimer = setTimeout(() => {
         this.hideTimer = null;
+        this.overlay?.webContents.send('overlay:state', { state: 'idle' });
         this.overlay?.hide();
-      }, 900);
+      }, hideMs);
     }
   }
 
@@ -109,21 +113,31 @@ export class Windows {
     }
   }
 
-  showSettings(): void {
+  showSettings(view?: string): void {
     if (this.settings && !this.settings.isDestroyed()) {
       this.settings.show();
       this.settings.focus();
+      if (view) this.settings.webContents.send('settings:navigate', { view });
       return;
     }
     const win = new BrowserWindow({
-      width: 880,
-      height: 640,
+      width: 720,
+      height: 700,
+      minWidth: 640,
+      minHeight: 560,
       title: 'Wisopen',
+      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+      trafficLightPosition: process.platform === 'darwin' ? { x: 16, y: 18 } : undefined,
       webPreferences: { preload, sandbox: false, contextIsolation: true },
     });
     harden(win);
     load(win, 'settings');
     this.settings = win;
+    if (view) {
+      win.webContents.once('did-finish-load', () => {
+        win.webContents.send('settings:navigate', { view });
+      });
+    }
   }
 
   showOnboarding(): void {
@@ -133,9 +147,14 @@ export class Windows {
       return;
     }
     const win = new BrowserWindow({
-      width: 560,
-      height: 640,
+      width: 480,
+      height: 680,
+      minWidth: 440,
+      minHeight: 600,
+      resizable: true,
       title: 'Welcome to Wisopen',
+      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+      trafficLightPosition: process.platform === 'darwin' ? { x: 16, y: 18 } : undefined,
       webPreferences: { preload, sandbox: false, contextIsolation: true },
     });
     harden(win);

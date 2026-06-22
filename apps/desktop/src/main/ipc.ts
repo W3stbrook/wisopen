@@ -7,17 +7,20 @@ import type { Session } from './session.js';
 import type { Windows } from './windows.js';
 import { getConfig } from './config.js';
 import { permStatus, requestMicrophone, openSettingsPane } from './permissions.js';
+import type { HotkeyManager } from './hotkey.js';
+import { captureNextCombo } from './hotkey.js';
 
 export interface IpcContext {
   api: ApiClient;
   store: Store;
   session: Session;
   windows: Windows;
+  hotkey: HotkeyManager;
   update: { install: () => void; check: () => void };
 }
 
 export function registerIpc(ctx: IpcContext): void {
-  const { api, store, session, windows } = ctx;
+  const { api, store, session, windows, hotkey } = ctx;
   const h = <C extends IpcInvokeChannel>(
     channel: C,
     fn: (...args: Parameters<IpcInvoke[C]>) => ReturnType<IpcInvoke[C]> | Promise<Awaited<ReturnType<IpcInvoke[C]>>>,
@@ -36,12 +39,34 @@ export function registerIpc(ctx: IpcContext): void {
     return api.signUpPassword(email, password);
   });
   h('auth:signInOtp', (p) => api.signInOtp((p as { email: string }).email));
-  h('auth:signOut', () => api.signOut());
+  h('auth:signOut', async () => {
+    const status = await api.signOut();
+    windows.send('auth:changed', status);
+    return status;
+  });
   h('auth:getJwt', async () => ({ jwt: await api.getJwt(), supabaseUrl: getConfig().supabaseUrl }));
+
+  h('hotkey:capture', async () => {
+    const combo = await captureNextCombo();
+    return { combo };
+  });
+  h('app:showOnboarding', () => {
+    windows.showOnboarding();
+  });
+  h('app:showSettings', (p) => {
+    const view = (p as { view?: string } | undefined)?.view;
+    windows.showSettings(view);
+  });
 
   // settings
   h('settings:get', () => store.getSettings());
-  h('settings:set', (patch) => store.setSettings(patch));
+  h('settings:set', (patch) => {
+    const next = store.setSettings(patch);
+    if (patch.pttKey !== undefined || patch.pttMode !== undefined) {
+      hotkey.setKey(next.pttKey, next.pttMode);
+    }
+    return next;
+  });
 
   // data CRUD (RLS) + refresh local cache for fast snippet expansion
   h('data:listSnippets', async () => {
@@ -106,6 +131,7 @@ export function registerIpc(ctx: IpcContext): void {
   // engine renderer -> main (fire-and-forget)
   ipcMain.on('engine:partial', (_e, p: { text: string }) => session.onPartial(p.text));
   ipcMain.on('engine:final', (_e, p: { text: string; audioSeconds: number }) => void session.onFinal(p));
+  ipcMain.on('engine:noSpeech', () => session.onNoSpeech());
   ipcMain.on('engine:error', (_e, p: { message: string }) => session.onError(p.message));
   ipcMain.on('engine:level', (_e, p: { level: number }) => windows.overlayLevel(p.level));
 }

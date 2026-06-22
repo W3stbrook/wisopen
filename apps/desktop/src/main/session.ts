@@ -1,7 +1,7 @@
 // Orchestrates one dictation: hotkey -> engine(STT) -> format(LLM) -> snippet
 // expansion -> injection -> history. Dependencies are injected so this is unit-testable
 // without Electron.
-import { expandSnippets } from '@wisopen/shared';
+import { expandSnippets, needsLlmPolish, quickPolish } from '@wisopen/shared';
 import type {
   AppSettings,
   FormatResponse,
@@ -35,6 +35,8 @@ export interface SessionDeps {
   sampleRate: number;
   /** ms before a stuck dictation (no final/error) self-resets. Default 25s. */
   watchdogMs?: number;
+  /** Called when a dictation ends (success, error, or timeout). */
+  onIdle?: () => void;
 }
 
 export class Session {
@@ -50,7 +52,7 @@ export class Session {
     }
   }
 
-  async start(): Promise<void> {
+  async start(opts?: { handsFree?: boolean }): Promise<void> {
     if (this.busy) return;
     const jwt = await this.deps.getJwt();
     if (!jwt) {
@@ -59,12 +61,16 @@ export class Session {
     }
     this.busy = true;
     this.clearWatchdog();
+    const handsFree = opts?.handsFree ?? false;
     this.watchdog = setTimeout(
       () => this.onError('Dictation timed out'),
-      this.deps.watchdogMs ?? 25_000,
+      handsFree ? 180_000 : (this.deps.watchdogMs ?? 25_000),
     );
     this.snippetsSnapshot = this.deps.getSnippets();
-    this.deps.overlay('listening');
+    this.deps.overlay(
+      'listening',
+      handsFree ? { message: 'Hands-free — press hotkey to finish' } : undefined,
+    );
     this.deps.engineCommand({
       cmd: 'start',
       jwt,
@@ -94,16 +100,26 @@ export class Session {
 
   async onFinal(payload: { text: string; audioSeconds: number }): Promise<void> {
     if (!this.busy) return;
+    if (!payload.text.trim()) {
+      this.onNoSpeech();
+      return;
+    }
     const settings = this.deps.getSettings();
     try {
-      this.deps.overlay('polishing');
-      const resp = await this.deps.callFormat({
-        transcript: payload.text,
-        mode_id: settings.defaultModeId,
-        lang: settings.uiLanguage,
-        dictionary: this.deps.getDictionary(),
-      });
-      const expanded = expandSnippets(resp.final_text, this.snippetsSnapshot);
+      let finalText: string;
+      if (needsLlmPolish(payload.text)) {
+        this.deps.overlay('polishing');
+        const resp = await this.deps.callFormat({
+          transcript: payload.text,
+          mode_id: settings.defaultModeId,
+          lang: settings.uiLanguage,
+          dictionary: this.deps.getDictionary(),
+        });
+        finalText = resp.final_text;
+      } else {
+        finalText = quickPolish(payload.text);
+      }
+      const expanded = expandSnippets(finalText, this.snippetsSnapshot);
       this.deps.overlay('inserting');
       await this.deps.inject(expanded, settings.injectionMode);
       this.deps.overlay('done');
@@ -120,7 +136,16 @@ export class Session {
     } finally {
       this.clearWatchdog();
       this.busy = false;
+      this.deps.onIdle?.();
     }
+  }
+
+  onNoSpeech(): void {
+    if (!this.busy) return;
+    this.clearWatchdog();
+    this.busy = false;
+    this.deps.overlay('cancelled');
+    this.deps.onIdle?.();
   }
 
   onError(message: string): void {
@@ -128,5 +153,6 @@ export class Session {
     this.clearWatchdog();
     this.busy = false;
     this.deps.overlay('error', { message });
+    this.deps.onIdle?.();
   }
 }
