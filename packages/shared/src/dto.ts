@@ -35,4 +35,5 @@ export type SttServerMsg =
   | { t: 'ready' }
   | { t: 'partial'; text: string }
   | { t: 'final'; text: string; audioSeconds: number }
+  | { t: 'cancelled'; reason: 'no_speech' }
   | { t: 'error'; message: string; code?: string };

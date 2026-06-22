@@ -7,6 +7,7 @@ import { OpenAiCompatibleLlm } from './llm/openai-compatible.ts';
 import { BedrockLlm } from './llm/bedrock.ts';
 import { AwsTranscribeStt, type AwsTranscriptEvent } from './stt/aws-transcribe.ts';
 import { OpenAiStt } from './stt/openai.ts';
+import { OpenAiRealtimeStt } from './stt/openai-realtime.ts';
 
 const env = (k: string): string | undefined => Deno.env.get(k);
 
@@ -68,6 +69,11 @@ export async function getSttProvider(): Promise<SttProvider> {
       })();
     };
     return new AwsTranscribeStt(start);
+  }
+  if (p === 'openai-realtime') {
+    const key = env('OPENAI_API_KEY') ?? '';
+    const model = env('OPENAI_REALTIME_MODEL') ?? 'gpt-4o-realtime-preview';
+    return new OpenAiRealtimeStt(key, model);
   }
   if (p === 'openai') {
     const { default: OpenAI, toFile } = await import('npm:openai@6.42.0');

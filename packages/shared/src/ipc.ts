@@ -10,6 +10,7 @@ export type OverlayState =
   | 'polishing'
   | 'inserting'
   | 'done'
+  | 'cancelled'
   | 'error';
 
 export interface AuthStatus {
@@ -24,8 +25,12 @@ export interface IpcInvoke {
   'auth:signInPassword': (p: { email: string; password: string }) => AuthStatus;
   'auth:signUpPassword': (p: { email: string; password: string }) => AuthStatus;
   'auth:signInOtp': (p: { email: string }) => { sent: boolean };
-  'auth:signOut': () => void;
+  'auth:signOut': () => AuthStatus;
   'auth:getJwt': () => { jwt: string | null; supabaseUrl: string };
+
+  'hotkey:capture': () => { combo: string };
+  'app:showOnboarding': () => void;
+  'app:showSettings': (p?: { view?: string }) => void;
 
   'settings:get': () => AppSettings;
   'settings:set': (patch: Partial<AppSettings>) => AppSettings;
@@ -58,6 +63,7 @@ export interface IpcSend {
   'engine:final': { text: string; audioSeconds: number };
   'engine:level': { level: number };
   'engine:error': { message: string };
+  'engine:noSpeech': Record<string, never>;
 }
 
 export type UpdateState = 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'error';
@@ -68,6 +74,7 @@ export interface IpcEvents {
   'overlay:level': { level: number };
   'auth:changed': AuthStatus;
   'update:status': { state: UpdateState; version?: string; percent?: number; message?: string };
+  'settings:navigate': { view: string };
   'engine:command': {
     cmd: 'start' | 'stop';
     jwt: string;

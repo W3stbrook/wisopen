@@ -1,5 +1,6 @@
 import type { SttProvider, SttProviderOptions, SttSession, SttEvent } from '../types.ts';
 import { createEventQueue, pcm16Seconds, concatBytes, pcm16ToWav } from '../../util.ts';
+import { pcm16HasSpeech } from '../../vad.ts';
 
 /**
  * Injected buffered transcription: receives a complete WAV blob, returns text.
@@ -44,7 +45,12 @@ export class OpenAiStt implements SttProvider {
               });
               return;
             }
-            const wav = pcm16ToWav(concatBytes(chunks), opts.sampleRate);
+            const pcm = concatBytes(chunks);
+            if (!pcm16HasSpeech(pcm)) {
+              out.push({ kind: 'cancelled', reason: 'no_speech' });
+              return;
+            }
+            const wav = pcm16ToWav(pcm, opts.sampleRate);
             const { text } = await transcribe(wav, { lang: opts.lang });
             out.push({ kind: 'final', text: text.trim(), audioSeconds: pcm16Seconds(bytes, opts.sampleRate) });
           } catch (err) {

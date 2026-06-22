@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { MockLlm, mockPolish } from '../supabase/functions/_shared/providers/llm/mock.ts';
 import { MockStt } from '../supabase/functions/_shared/providers/stt/mock.ts';
 import { OpenAiCompatibleLlm } from '../supabase/functions/_shared/providers/llm/openai-compatible.ts';
@@ -24,7 +24,14 @@ async function collect(session: SttSession): Promise<SttEvent[]> {
   return evs;
 }
 
-const frame = () => new Uint8Array(3200); // 0.1s @16k PCM16
+const frame = () => new Uint8Array(3200); // 0.1s @16k PCM16 silence
+
+function speechFrame(): Uint8Array {
+  const buf = new Uint8Array(3200);
+  const view = new DataView(buf.buffer);
+  for (let i = 0; i < buf.byteLength / 2; i++) view.setInt16(i * 2, 2000, true);
+  return buf;
+}
 
 describe('mock LLM', () => {
   it('polishes: strips filler, capitalizes, terminal punctuation', () => {
@@ -121,7 +128,7 @@ describe('OpenAiStt (buffered, DI)', () => {
       gotWav = wav;
       return { text: 'buffered result' };
     }).openSession({ sampleRate: 16000 });
-    s.pushAudio(frame());
+    s.pushAudio(speechFrame());
     s.end();
     const evs = await collect(s);
     expect(evs).toHaveLength(1);
@@ -130,6 +137,17 @@ describe('OpenAiStt (buffered, DI)', () => {
     // wav header present
     expect(gotWav!.byteLength).toBe(44 + 3200);
     expect(String.fromCharCode(...gotWav!.slice(0, 4))).toBe('RIFF');
+  });
+
+  it('skips OpenAI when audio is silent', async () => {
+    const transcribe = vi.fn();
+    const s = new OpenAiStt(transcribe).openSession({ sampleRate: 16000 });
+    s.pushAudio(frame());
+    s.end();
+    const evs = await collect(s);
+    expect(evs).toHaveLength(1);
+    expect(evs[0]!.kind).toBe('cancelled');
+    expect(transcribe).not.toHaveBeenCalled();
   });
 });
 

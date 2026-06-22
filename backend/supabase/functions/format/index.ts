@@ -3,6 +3,7 @@
 // live only here. (spec §6.2, amendments 3 & 5)
 import { getLlmProvider } from '../_shared/providers/index.ts';
 import { buildPolishPrompt, RAW_PASSTHROUGH } from '../_shared/prompt.ts';
+import { needsLlmPolish, quickPolish } from '../_shared/polish.ts';
 import { verifyJwt, userClient, adminClient } from '../_shared/auth.ts';
 import { logUsage } from '../_shared/usage.ts';
 
@@ -69,14 +70,19 @@ Deno.serve(async (req: Request) => {
     let model: string | null = null;
 
     if (template !== RAW_PASSTHROUGH) {
-      const llm = await getLlmProvider();
-      const { system, user: userTurn } = buildPolishPrompt(template, transcript, dictionary, lang);
-      const r = await llm.complete(system, userTurn);
-      finalText = r.text || transcript;
-      tokensIn = r.tokensIn;
-      tokensOut = r.tokensOut;
-      providerId = llm.id;
-      model = r.model;
+      if (needsLlmPolish(transcript)) {
+        const llm = await getLlmProvider();
+        const { system, user: userTurn } = buildPolishPrompt(template, transcript, dictionary, lang);
+        const r = await llm.complete(system, userTurn);
+        finalText = r.text || transcript;
+        tokensIn = r.tokensIn;
+        tokensOut = r.tokensOut;
+        providerId = llm.id;
+        model = r.model;
+      } else {
+        finalText = quickPolish(transcript);
+        providerId = 'heuristic';
+      }
     }
 
     // Raw passthrough makes no LLM call — nothing to meter.

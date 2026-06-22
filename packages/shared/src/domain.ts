@@ -90,10 +90,16 @@ export interface UsageEvent {
   created_at: string;
 }
 
+/** How the push-to-talk key behaves. */
+export type PttMode =
+  | 'hybrid' // hold = PTT; double-tap = hands-free until next press (default)
+  | 'hold' // hold only, no double-tap hands-free
+  | 'toggle'; // single press toggles hands-free on/off
+
 /** Locally-stored, user-tunable app settings (mirrored, not all server-synced). */
 export interface AppSettings {
   pttKey: string; // uiohook key name, default 'F13' (mac) / configured combo (win)
-  pttMode: 'hold' | 'toggle';
+  pttMode: PttMode;
   defaultModeId: string | null;
   injectionMode: 'paste' | 'keystroke';
   uiLanguage: UiLanguage;
@@ -110,7 +116,7 @@ export function defaultPttKey(
 
 export const DEFAULT_SETTINGS: AppSettings = {
   pttKey: defaultPttKey(),
-  pttMode: 'hold',
+  pttMode: 'hybrid',
   defaultModeId: null,
   injectionMode: 'paste',
   uiLanguage: 'en',

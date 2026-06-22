@@ -14,7 +14,11 @@ export interface SttErrorEvent {
   kind: 'error';
   message: string;
 }
-export type SttEvent = SttPartial | SttFinal | SttErrorEvent;
+export interface SttCancelled {
+  kind: 'cancelled';
+  reason: 'no_speech';
+}
+export type SttEvent = SttPartial | SttFinal | SttErrorEvent | SttCancelled;
 
 /** A live transcription session. Audio frames pushed in; events come out. */
 export interface SttSession {

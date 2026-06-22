@@ -71,6 +71,8 @@ Deno.serve(async (req: Request) => {
               send({ t: 'partial', text: ev.text });
             } else if (ev.kind === 'error') {
               send({ t: 'error', message: ev.message });
+            } else if (ev.kind === 'cancelled') {
+              send({ t: 'cancelled', reason: ev.reason });
             } else {
               const audioSeconds = ev.audioSeconds ?? 0;
               send({ t: 'final', text: ev.text, audioSeconds });

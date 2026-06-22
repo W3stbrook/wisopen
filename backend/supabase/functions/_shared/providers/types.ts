@@ -17,7 +17,11 @@ export interface SttErrorEvent {
   kind: 'error';
   message: string;
 }
-export type SttEvent = SttPartial | SttFinal | SttErrorEvent;
+export interface SttCancelled {
+  kind: 'cancelled';
+  reason: 'no_speech';
+}
+export type SttEvent = SttPartial | SttFinal | SttErrorEvent | SttCancelled;
 
 export interface SttSession {
   pushAudio(frame: Uint8Array): void;
